@@ -8,8 +8,13 @@ using NinjaPricer.API.Poe2Scout.Models;
 
 namespace NinjaPricer.API.Poe2Scout;
 
-public class DataDownloader
-{
+public class DataDownloader {
+    private const string baseUrl = "https://poe2scout.com/api";
+
+    private string getLink(string path, string league, int page) {
+        return $"{baseUrl}/{path}?league={league}&page={page}&perPage=250";
+    }
+    
     private int _updating;
     public double? DivineValue { get; set; }
     public CollectiveApiData CollectedData { get; set; }
@@ -47,22 +52,22 @@ public class DataDownloader
                     tryWebFirst = await IsLocalCacheStale(metadataPath);
                 }
 
-                newData.Currency = await LoadData<Currency.Item, Currency.RootObject>("Currency.json", "https://poe2scout.com/api/items/currency?page={1}&per_page=25&league={0}", league, tryWebFirst);
-                newData.Breach = await LoadData<Breach.Item, Breach.RootObject>("Breach.json", "https://poe2scout.com/api/items/breachcatalyst?page={1}&per_page=25&league={0}", league, tryWebFirst);
-                newData.Weapons = await LoadData<Weapons.Item, Weapons.RootObject>("Weapons.json", "https://poe2scout.com/api/items/weapon?page={1}&per_page=25&league={0}", league, tryWebFirst);
-                newData.Armour = await LoadData<Armour.Item, Armour.RootObject>("Armour.json", "https://poe2scout.com/api/items/armour?page={1}&per_page=25&league={0}", league, tryWebFirst);
-                newData.Accessories = await LoadData<Accessories.Item, Accessories.RootObject>("Accessories.json", "https://poe2scout.com/api/items/accessory?page={1}&per_page=25&league={0}", league, tryWebFirst);
-                newData.Delirium = await LoadData<Delirium.Item, Delirium.RootObject>("Delirium.json", "https://poe2scout.com/api/items/deliriuminstill?page={1}&per_page=25&league={0}", league, tryWebFirst);
-                newData.Essences = await LoadData<Essences.Item, Essences.RootObject>("Essences.json", "https://poe2scout.com/api/items/essences?page={1}&per_page=25&league={0}", league, tryWebFirst);
-                newData.Ritual = await LoadData<Ritual.Item, Ritual.RootObject>("Ritual.json", "https://poe2scout.com/api/items/ritual?page={1}&per_page=25&league={0}", league, tryWebFirst);
-                newData.Ultimatum = await LoadData<Ultimatum.Item, Ultimatum.RootObject>("Ultimatum.json", "https://poe2scout.com/api/items/ultimatum?page={1}&per_page=25&league={0}", league, tryWebFirst);
+                newData.Currency = await LoadData<Currency.Item, Currency.RootObject>("Currency.json", "items/currency/currency", league, tryWebFirst);
+                newData.Breach = await LoadData<Currency.Item, Currency.RootObject>("Breach.json", "items/currency/breachcatalyst", league, tryWebFirst);
+                newData.Weapons = await LoadData<Unique.Item, Unique.RootObject>("Weapons.json", "items/unique/weapon", league, tryWebFirst);
+                newData.Armour = await LoadData<Unique.Item, Unique.RootObject>("Armour.json", "items/unique/armour", league, tryWebFirst);
+                newData.Accessories = await LoadData<Unique.Item, Unique.RootObject>("Accessories.json", "items/unique/accessory", league, tryWebFirst);
+                newData.Delirium = await LoadData<Currency.Item, Currency.RootObject>("Delirium.json", "items/currency/deliriuminstill", league, tryWebFirst);
+                newData.Essences = await LoadData<Currency.Item, Currency.RootObject>("Essences.json", "items/currency/essences", league, tryWebFirst);
+                newData.Ritual = await LoadData<Currency.Item, Currency.RootObject>("Ritual.json", "items/currency/ritual", league, tryWebFirst);
+                newData.Ultimatum = await LoadData<Currency.Item, Currency.RootObject>("Ultimatum.json", "items/currency/ultimatum", league, tryWebFirst);
 
                 new FileInfo(metadataPath).Directory?.Create();
                 await File.WriteAllTextAsync(metadataPath, JsonConvert.SerializeObject(new LeagueMetadata { LastLoadTime = DateTime.UtcNow }));
 
                 log("Finished Gathering Data from Poe.Ninja.");
                 CollectedData = newData;
-                DivineValue = CollectedData.Currency.Find(x => x.type == "Divine Orb")?.latest_price?.nominal_price;
+                DivineValue = CollectedData.Currency.Find(x => x.text == "Divine Orb")?.currentPrice;
                 log("Updated CollectedData.");
             }
             finally
@@ -96,12 +101,11 @@ public class DataDownloader
         }
     }
 
-    private async Task<List<TItem>> LoadData<TItem, TPaged>(string fileName, string url, string league, bool tryWebFirst) where TPaged : class, IPaged<TItem>
+    private async Task<List<TItem>> LoadData<TItem, TPaged>(string fileName, string category, string league, bool tryWebFirst) where TPaged : class, IPaged<TItem>
     {
         var backupFile = Path.Join(DataDirectory, league, fileName);
-        if (tryWebFirst)
-        {
-            if (await LoadPagedDataFromWeb<TItem, TPaged>(fileName, url, league, backupFile) is {} data)
+        if (tryWebFirst) {
+            if (await LoadPagedDataFromWeb<TItem, TPaged>(fileName, category, league, backupFile) is {} data)
             {
                 return data;
             }
@@ -114,7 +118,7 @@ public class DataDownloader
 
         if (!tryWebFirst)
         {
-            return await LoadPagedDataFromWeb<TItem, TPaged>(fileName, url, league, backupFile);
+            return await LoadPagedDataFromWeb<TItem, TPaged>(fileName, category, league, backupFile);
         }
 
         return null;
@@ -156,12 +160,12 @@ public class DataDownloader
             {
                 if (Settings.DebugSettings.EnableDebugLogging)
                 {
-                    log($"Downloading {fileName} ({page}/{d?.pages.ToString() ?? "?"}");
+                    log($"Downloading {fileName} ({page}/{d?.pages.ToString() ?? "?"})");
                 }
-                d = JsonConvert.DeserializeObject<TPaged>(await Utils.DownloadFromUrl(string.Format(url, league, page)));
+                d = JsonConvert.DeserializeObject<TPaged>(await Utils.DownloadFromUrl(getLink(url, league, page)));
                 items.AddRange(d.items);
                 page++;
-            } while (d.current_page < d.pages);
+            } while (d.currentPage < d.pages);
 
             if (Settings.DebugSettings.EnableDebugLogging)
             {
