@@ -37,6 +37,7 @@ public class DebugSettings
 [Submenu(CollapsedByDefault = true)]
 public class DataSourceSettings
 {
+    [IgnoreMenu]
     public DateTime LastUpdateTime { get; set; } = DateTime.Now;
 
     public RangeNode<int> ItemUpdatePeriodMs { get; set; } = new(250, 1, 2000);
