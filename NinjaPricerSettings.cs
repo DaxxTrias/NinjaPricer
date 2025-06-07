@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using ExileCore2.Shared.Attributes;
 using ExileCore2.Shared.Interfaces;
 using ExileCore2.Shared.Nodes;
+using ImGuiNET;
 using Newtonsoft.Json;
 
 namespace NinjaPricer;
@@ -21,6 +22,7 @@ public class NinjaPricerSettings : ISettings
     public PriceOverlaySettings PriceOverlaySettings { get; set; } = new();
     public LeagueSpecificSettings LeagueSpecificSettings { get; set; } = new();
     public VisualPriceSettings VisualPriceSettings { get; set; } = new();
+    public SoundNotificationSettings SoundNotificationSettings { get; set; } = new();
     public ToggleNode Enable { get; set; } = new(true);
 }
 
@@ -162,4 +164,30 @@ public class VisualPriceSettings
 
     [Menu(null, "Set to 0 to disable")]
     public RangeNode<float> MaximalValueForFractionalDisplay { get; set; } = new(0.2f, 0, 1);
+}
+
+[Submenu(CollapsedByDefault = true)]
+public class SoundNotificationSettings
+{
+    [JsonIgnore]
+    public CustomNode Information { get; set; } = new CustomNode(() =>
+    {
+        ImGui.Text($"By default, plays {NinjaPricer.DefaultWav} in the plugin's config directory.\nTo customize sounds per unique, create UniqueName.wav in the same directory");
+    });
+
+    [JsonIgnore]
+    public ButtonNode OpenConfigDirectory { get; set; } = new ButtonNode();
+
+    public ToggleNode Enabled { get; set; } = new ToggleNode(true);
+
+    [JsonIgnore]
+    public ButtonNode ReloadSoundList { get; set; } = new ButtonNode();
+
+    [JsonIgnore]
+    [Menu(null, "For debugging your alerts")]
+    public ButtonNode ResetEntityNotificationFlags { get; set; } = new ButtonNode();
+
+    public RangeNode<float> Volume { get; set; } = new(1, 0, 2);
+    public RangeNode<int> ValueThreshold { get; set; } = new(50, 0, 100000);
+    public ToggleNode PlayCustomSoundsIfBelowThreshold { get; set; } = new ToggleNode(true);
 }

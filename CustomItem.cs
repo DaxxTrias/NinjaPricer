@@ -36,6 +36,7 @@ public class CustomItem
     public readonly List<string> EnchantedStats;
     public readonly string CapturedMonsterName;
 
+    public readonly uint EntityId;
     public MapData MapInfo { get; set; } =  new MapData();
     public CurrencyData CurrencyInfo { get; set; } =  new CurrencyData();
     public NinjaPricer.RelevantPriceData PriceData { get; set; } = new NinjaPricer.RelevantPriceData();
@@ -77,6 +78,7 @@ public class CustomItem
     {
         try
         {
+            EntityId = itemEntity.Id;
             if (element != null && element.Address != 0)
                 Element = element;
 

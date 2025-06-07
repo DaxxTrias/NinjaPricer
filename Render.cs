@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Numerics;
 using ExileCore2.PoEMemory;
@@ -41,6 +42,7 @@ public partial class NinjaPricer
 
     private readonly CachedValue<List<ItemOnGround>> _slowGroundItems;
     private readonly CachedValue<List<ItemOnGround>> _groundItems;
+    private readonly Dictionary<uint, bool> _soundPlayedTracker = new Dictionary<uint, bool>();
 
     public NinjaPricer()
     {
@@ -72,6 +74,10 @@ public partial class NinjaPricer
             }
         }
         result.AddRange(_slowGroundItems.Value);
+        foreach (var id in _soundPlayedTracker.Keys.Except(result.Select(x => x.Item.EntityId)).ToList())
+        {
+            _soundPlayedTracker.Remove(id);
+        }
         return result;
     }
 
@@ -90,6 +96,7 @@ public partial class NinjaPricer
         }
 
         result.ForEach(x => GetValue(x.Item));
+
         return result;
     }
 
@@ -664,6 +671,44 @@ public partial class NinjaPricer
             {
                 case GroundItemProcessingType.WorldItem:
                 {
+                    if (Settings.SoundNotificationSettings.Enabled && 
+                        !_soundPlayedTracker.ContainsKey(item.EntityId))
+                    {
+                        var matchingCustomFile =
+                            item.UniqueNameCandidates.Any() ||
+                            !string.IsNullOrEmpty(item.UniqueName)
+                                ? item.UniqueNameCandidates
+                                    .DefaultIfEmpty(item.UniqueName)
+                                    .Select(x => _soundFiles.GetValueOrDefault(x))
+                                    .FirstOrDefault(x => x != null)
+                                : null;
+                        if (item.PriceData.MaxChaosValue >= Settings.SoundNotificationSettings.ValueThreshold ||
+                            Settings.SoundNotificationSettings.PlayCustomSoundsIfBelowThreshold && matchingCustomFile != null)
+                        {
+                            if (_soundPlayedTracker.TryAdd(item.EntityId, true))
+                            {
+                                var defaultFile = Path.Join(ConfigDirectory, "default.wav");
+                                if (matchingCustomFile != null && !File.Exists(matchingCustomFile))
+                                {
+                                    LogError($"Unable to find {matchingCustomFile}. It was probably deleted. Reload the sound list to update your preferences");
+                                    matchingCustomFile = null;
+                                }
+
+                                var fileToPlay = matchingCustomFile ?? defaultFile;
+
+                                if (File.Exists(fileToPlay))
+                                {
+                                    GameController.SoundController.PlaySound(fileToPlay, Settings.SoundNotificationSettings.Volume);
+                                }
+                                else if (fileToPlay == defaultFile)
+                                {
+                                    LogError(
+                                        $"Unable to find the default sound file ({defaultFile}) to play. Disable the sound notification feature, reload the sound list to let the plugin create it, or create it yourself");
+                                }
+                            }
+                        }
+                    }
+
                     if (!tooltipRect.Intersects(box) && !leftPanelRect.Intersects(box) && !rightPanelRect.Intersects(box))
                     {
                         var isValuable = item.PriceData.MaxChaosValue >= Settings.VisualPriceSettings.ValuableColorThreshold;

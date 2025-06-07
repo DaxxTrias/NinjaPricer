@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -18,9 +19,11 @@ public partial class NinjaPricer : BaseSettingsPlugin<NinjaPricerSettings>
     private CollectiveApiData CollectedData => _downloader.CollectedData;
     private const string CustomUniqueArtMappingPath = "uniqueArtMapping.json";
     private const string DefaultUniqueArtMappingPath = "uniqueArtMapping.default.json";
+    internal const string DefaultWav = "default.wav";
     private int _updating;
     public Dictionary<string, List<string>> UniqueArtMapping = new Dictionary<string, List<string>>();
     private readonly DataDownloader _downloader = new DataDownloader();
+    private Dictionary<string, string> _soundFiles = [];
 
     public override bool Initialise()
     {
@@ -64,12 +67,41 @@ public partial class NinjaPricer : BaseSettingsPlugin<NinjaPricerSettings>
             GetValue(customItem);
             return customItem.PriceData.MinChaosValue;
         });
+
+        Settings.SoundNotificationSettings.ResetEntityNotificationFlags.OnPressed += () =>
+        {
+            _soundPlayedTracker.Clear();
+        };
+        Settings.SoundNotificationSettings.OpenConfigDirectory.OnPressed += () =>
+        {
+            Process.Start("explorer.exe", ConfigDirectory);
+        };
+        Settings.SoundNotificationSettings.ReloadSoundList.OnPressed += ReloadSoundList;
+        ReloadSoundList();
+
         return true;
+    }
+
+    private void ReloadSoundList()
+    {
+        var defaultFilePath = Path.Join(ConfigDirectory, DefaultWav);
+        if (!File.Exists(defaultFilePath))
+        {
+            using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(DefaultWav);
+            using var file = File.OpenWrite(defaultFilePath);
+            stream.CopyTo(file);
+        }
+
+        _soundFiles = Directory.EnumerateFiles(ConfigDirectory, "*.wav")
+            .Select(x => (Path.GetFileNameWithoutExtension(x), x))
+            .DistinctBy(x => x.Item1, StringComparer.InvariantCultureIgnoreCase)
+            .ToDictionary(x => x.Item1, x => x.x, StringComparer.InvariantCultureIgnoreCase);
     }
 
     public override void AreaChange(AreaInstance area)
     {
         _inspectedItem = null;
+        _soundPlayedTracker.Clear();
         UniqueArtMapping = GetUniqueArtMapping();
         SyncCurrentLeague();
     }
