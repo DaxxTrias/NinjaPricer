@@ -200,13 +200,13 @@ public partial class NinjaPricer
                         }
 
                         break;
-                    case ItemTypes.Expedtion:
-                        var expedtionSearch = CollectedData.Expedtions.Find(x => x.text == item.BaseName);
-                        if (expedtionSearch != null)
+                    case ItemTypes.Expedition:
+                        var expeditionSearch = CollectedData.Expeditions.Find(x => x.text == item.BaseName);
+                        if (expeditionSearch != null)
                         {
-                            item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * expedtionSearch.currentPrice;
+                            item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * expeditionSearch.currentPrice;
                             item.PriceData.ChangeInLast7Days = 0;
-                            item.PriceData.DetailsId = expedtionSearch.id;
+                            item.PriceData.DetailsId = expeditionSearch.id;
                         }
 
                         break;

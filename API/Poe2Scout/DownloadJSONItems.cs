@@ -61,10 +61,10 @@ public class DataDownloader {
                 newData.Essences = await LoadData<Currency.Item, Currency.RootObject>("Essences.json", "items/currency/essences", league, tryWebFirst);
                 newData.Runes = await LoadData<Currency.Item, Currency.RootObject>("Runes.json", "items/currency/runes", league, tryWebFirst);
                 newData.Ritual = await LoadData<Currency.Item, Currency.RootObject>("Ritual.json", "items/currency/ritual", league, tryWebFirst);
-                newData.Ultimatum = await LoadData<Currency.Item, Currency.RootObject>("Ultimatum.json", "items/currency/ultimatum", league, tryWebFirst);
+                newData.Ultimatums = await LoadData<Currency.Item, Currency.RootObject>("Ultimatum.json", "items/currency/ultimatum", league, tryWebFirst);
                 newData.Fragments = await LoadData<Currency.Item, Currency.RootObject>("Fragments.json", "items/currency/fragments", league, tryWebFirst);
                 newData.Talismans = await LoadData<Currency.Item, Currency.RootObject>("Talismans.json", "items/currency/talismans", league, tryWebFirst);
-                newData.Expedition = await LoadData<Currency.Item, Currency.RootObject>("Expedition.json", "items/currency/expedition", league, tryWebFirst);
+                newData.Expeditions = await LoadData<Currency.Item, Currency.RootObject>("Expedition.json", "items/currency/expedition", league, tryWebFirst);
                 newData.Waystones = await LoadData<Currency.Item, Currency.RootObject>("Waystones.json", "items/currency/waystones", league, tryWebFirst);
                 newData.VaultKeys = await LoadData<Currency.Item, Currency.RootObject>("VaultKeys.json", "items/currency/vaultkeys", league, tryWebFirst);
 
