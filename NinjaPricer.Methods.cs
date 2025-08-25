@@ -1,11 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
+using ExileCore2;
 using ExileCore2.PoEMemory.Elements;
 using ExileCore2.PoEMemory.Elements.InventoryElements;
 using ExileCore2.Shared.Enums;
 using NinjaPricer.Enums;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
 
 namespace NinjaPricer;
 
@@ -55,7 +56,7 @@ public partial class NinjaPricer
 
     private static List<CustomItem> FormatItems(IEnumerable<NormalInventoryItem> itemList)
     {
-        return itemList.ToList().Where(x => x?.Item?.IsValid == true).Select(inventoryItem => new CustomItem(inventoryItem)).ToList();
+        return itemList.Where(x => x?.Item?.IsValid == true).Select(inventoryItem => new CustomItem(inventoryItem)).ToList();
     }
 
     private static bool TryGetShardParent(string shardBaseName, out string shardParent)
@@ -89,12 +90,31 @@ public partial class NinjaPricer
                     }
                 }
             }
+
+            HoveredItemTooltipRect = HoveredItem?.Element?.Tooltip?.GetClientRectCache;
         }
-        catch
+        catch (Exception ex)
         {
-            // ignored
-            //LogError("Error in GetHoveredItem()", 10);
+            DebugWindow.LogError($"Failed to get the hovered item: {ex}");
         }
+    }
+
+    private void GetValue(IEnumerable<CustomItem> items)
+    {
+        foreach (var customItem in items)
+        {
+            GetValue(customItem);
+        }
+    }
+
+    private T GetValue<T>(T items) where T : IReadOnlyCollection<CustomItem>
+    {
+        foreach (var customItem in items)
+        {
+            GetValue(customItem);
+        }
+
+        return items;
     }
 
     private void GetValue(CustomItem item)
