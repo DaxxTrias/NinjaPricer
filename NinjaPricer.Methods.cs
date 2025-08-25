@@ -170,6 +170,16 @@ public partial class NinjaPricer
                         }
 
                         break;
+                    case ItemTypes.Rune:
+                        var runeSearch = CollectedData.Runes.Find(x => x.text == item.BaseName);
+                        if (runeSearch != null)
+                        {
+                            item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * runeSearch.currentPrice;
+                            item.PriceData.ChangeInLast7Days = 0;
+                            item.PriceData.DetailsId = runeSearch.id;
+                        }
+
+                        break;
                     case ItemTypes.Omen:
                         var omenSearch = CollectedData.Ritual.Find(x => x.text == item.BaseName);
                         if (omenSearch != null)

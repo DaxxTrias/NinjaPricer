@@ -14,4 +14,5 @@ public class CollectiveApiData
     public List<Currency.Item> Delirium { get; set; }
     public List<Currency.Item> Essences { get; set; }
     public List<Currency.Item> Ritual { get; set; }
+    public List<Currency.Item> Runes { get; set; }
 }

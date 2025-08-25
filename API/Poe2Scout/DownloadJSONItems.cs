@@ -59,6 +59,7 @@ public class DataDownloader {
                 newData.Accessories = await LoadData<Unique.Item, Unique.RootObject>("Accessories.json", "items/unique/accessory", league, tryWebFirst);
                 newData.Delirium = await LoadData<Currency.Item, Currency.RootObject>("Delirium.json", "items/currency/deliriuminstill", league, tryWebFirst);
                 newData.Essences = await LoadData<Currency.Item, Currency.RootObject>("Essences.json", "items/currency/essences", league, tryWebFirst);
+                newData.Runes = await LoadData<Currency.Item, Currency.RootObject>("Runes.json", "items/currency/runes", league, tryWebFirst);
                 newData.Ritual = await LoadData<Currency.Item, Currency.RootObject>("Ritual.json", "items/currency/ritual", league, tryWebFirst);
                 newData.Ultimatum = await LoadData<Currency.Item, Currency.RootObject>("Ultimatum.json", "items/currency/ultimatum", league, tryWebFirst);
 
