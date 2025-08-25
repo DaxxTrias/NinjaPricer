@@ -240,12 +240,34 @@ public class CustomItem
         {
             ItemType = ItemTypes.Essence;
         }
-        else if (BaseName.Contains("Rune"))
+        else if (BaseName.Contains("Rune") && ClassName == "SoulCore")
         {
             ItemType = ItemTypes.Rune;
         }
+        else if (BaseName.Contains("Soul Core") && ClassName == "SoulCore")
+        {
+            ItemType = ItemTypes.Ultimatum;
+        }
+        else if (BaseName.Contains("Talisman") && ClassName == "SoulCore")
+        {
+            ItemType = ItemTypes.Talisman;
+        }
+        else if (BaseName.EndsWith("Artifact") && ClassName == "StackableCurrency" || 
+                 BaseName.Contains("Coinage") && ClassName == "StackableCurrency")
+        {
+            ItemType = ItemTypes.Expedition;
+        }
+        else if (BaseName.Contains("Waystone") && ClassName == "Map" || 
+                 BaseName.Contains("Tablet") && ClassName == "TowerAugmentation")
+        {
+            ItemType = ItemTypes.Waystone;
+        }
+        else if (BaseName.Contains("Key") && ClassName == "VaultKey")
+        {
+            ItemType = ItemTypes.VaultKey;
+        }
         else if (ClassName == "MapFragment" || BaseName.Contains("Timeless ") || BaseName.StartsWith("Simulacrum") ||
-                 ClassName == "StackableCurrency" && BaseName.StartsWith("Splinter of ") ||
+                 ClassName == "StackableCurrency" && BaseName.EndsWith("Splinter") ||
                  BaseName.StartsWith("Crescent Splinter") ||
                  ClassName == "VaultKey" ||
                  BaseName == "Valdo's Puzzle Box")

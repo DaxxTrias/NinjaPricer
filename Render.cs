@@ -318,6 +318,11 @@ public partial class NinjaPricer
             case ItemTypes.DistilledDelirium:
             case ItemTypes.Artifact:
             case ItemTypes.DivinationCard:
+            case ItemTypes.Ultimatum:
+            case ItemTypes.VaultKey:
+            case ItemTypes.Waystone:
+            case ItemTypes.Expedition:
+            case ItemTypes.Talisman:
             case ItemTypes.Omen:
                 if (priceInDivines >= 0.1)
                 {

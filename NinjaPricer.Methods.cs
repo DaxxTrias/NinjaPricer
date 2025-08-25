@@ -180,6 +180,56 @@ public partial class NinjaPricer
                         }
 
                         break;
+                    case ItemTypes.Ultimatum:
+                        var ultimatumSearch = CollectedData.Ultimatums.Find(x => x.text == item.BaseName);
+                        if (ultimatumSearch != null)
+                        {
+                            item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * ultimatumSearch.currentPrice;
+                            item.PriceData.ChangeInLast7Days = 0;
+                            item.PriceData.DetailsId = ultimatumSearch.id;
+                        }
+
+                        break;
+                    case ItemTypes.Talisman:
+                        var talismanSearch = CollectedData.Talismans.Find(x => x.text == item.BaseName);
+                        if (talismanSearch != null)
+                        {
+                            item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * talismanSearch.currentPrice;
+                            item.PriceData.ChangeInLast7Days = 0;
+                            item.PriceData.DetailsId = talismanSearch.id;
+                        }
+
+                        break;
+                    case ItemTypes.Expedtion:
+                        var expedtionSearch = CollectedData.Expedtions.Find(x => x.text == item.BaseName);
+                        if (expedtionSearch != null)
+                        {
+                            item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * expedtionSearch.currentPrice;
+                            item.PriceData.ChangeInLast7Days = 0;
+                            item.PriceData.DetailsId = expedtionSearch.id;
+                        }
+
+                        break;
+                    case ItemTypes.Waystone:
+                        var waystoneSearch = CollectedData.Waystones.Find(x => x.text == item.BaseName);
+                        if (waystoneSearch != null)
+                        {
+                            item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * waystoneSearch.currentPrice;
+                            item.PriceData.ChangeInLast7Days = 0;
+                            item.PriceData.DetailsId = waystoneSearch.id;
+                        }
+
+                        break;
+                    case ItemTypes.Vaultkey:
+                        var vaultkeySearch = CollectedData.Vaultkeys.Find(x => x.text == item.BaseName);
+                        if (vaultkeySearch != null)
+                        {
+                            item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * vaultkeySearch.currentPrice;
+                            item.PriceData.ChangeInLast7Days = 0;
+                            item.PriceData.DetailsId = vaultkeySearch.id;
+                        }
+
+                        break;
                     case ItemTypes.Omen:
                         var omenSearch = CollectedData.Ritual.Find(x => x.text == item.BaseName);
                         if (omenSearch != null)

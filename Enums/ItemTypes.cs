@@ -19,4 +19,9 @@ public enum ItemTypes
     Catalyst,
     DistilledDelirium,
     Rune,
+    Ultimatum,
+    Talisman,
+    Expedition,
+    Waystone,
+    VaultKey,
 }

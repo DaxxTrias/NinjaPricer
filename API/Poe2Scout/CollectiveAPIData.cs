@@ -5,14 +5,19 @@ namespace NinjaPricer.API.Poe2Scout;
 
 public class CollectiveApiData
 {
-    public List<Unique.Item> Armour { get; set; }
     public List<Currency.Item> Currency { get; set; }
-    public List<Unique.Item> Weapons { get; set; }
     public List<Currency.Item> Breach { get; set; }
+    public List<Unique.Item> Weapons { get; set; }
+    public List<Unique.Item> Armour { get; set; }
     public List<Unique.Item> Accessories { get; set; }
-    public List<Currency.Item> Ultimatum { get; set; }
     public List<Currency.Item> Delirium { get; set; }
     public List<Currency.Item> Essences { get; set; }
-    public List<Currency.Item> Ritual { get; set; }
     public List<Currency.Item> Runes { get; set; }
+    public List<Currency.Item> Ritual { get; set; }
+    public List<Currency.Item> Ultimatum { get; set; }
+    public List<Currency.Item> Fragments { get; set; }
+    public List<Currency.Item> Talismans { get; set; }
+    public List<Currency.Item> Expedition { get; set; }
+    public List<Currency.Item> Waystones { get; set; }
+    public List<Currency.Item> VaultKeys { get; set; }
 }
