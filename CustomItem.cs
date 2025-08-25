@@ -193,6 +193,7 @@ public class CustomItem
                  !BaseName.StartsWith("Simulacrum") &&
                  !BaseName.EndsWith("Delirium Orb") &&
                  !BaseName.Contains("Essence") &&
+                 !BaseName.Contains("Rune") &&
                  !BaseName.EndsWith(" Oil") &&
                  !BaseName.Contains("Tattoo ") &&
                  !BaseName.StartsWith("Omen ") &&
@@ -238,6 +239,10 @@ public class CustomItem
         else if (BaseName.Contains("Essence") || BaseName.Contains("Remnant of"))
         {
             ItemType = ItemTypes.Essence;
+        }
+        else if (BaseName.Contains("Rune"))
+        {
+            ItemType = ItemTypes.Rune;
         }
         else if (ClassName == "MapFragment" || BaseName.Contains("Timeless ") || BaseName.StartsWith("Simulacrum") ||
                  ClassName == "StackableCurrency" && BaseName.StartsWith("Splinter of ") ||

@@ -312,6 +312,7 @@ public partial class NinjaPricer
         {
             case ItemTypes.Currency:
             case ItemTypes.Essence:
+            case ItemTypes.Rune:
             case ItemTypes.Fragment:
             case ItemTypes.Catalyst:
             case ItemTypes.DistilledDelirium:
