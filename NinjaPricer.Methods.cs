@@ -220,8 +220,8 @@ public partial class NinjaPricer
                         }
 
                         break;
-                    case ItemTypes.Vaultkey:
-                        var vaultkeySearch = CollectedData.Vaultkeys.Find(x => x.text == item.BaseName);
+                    case ItemTypes.VaultKey:
+                        var vaultkeySearch = CollectedData.VaultKeys.Find(x => x.text == item.BaseName);
                         if (vaultkeySearch != null)
                         {
                             item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * vaultkeySearch.currentPrice;
