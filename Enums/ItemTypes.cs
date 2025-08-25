@@ -18,4 +18,5 @@ public enum ItemTypes
     Omen,
     Catalyst,
     DistilledDelirium,
+    Rune
 }
