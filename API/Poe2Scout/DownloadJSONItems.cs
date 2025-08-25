@@ -8,11 +8,13 @@ using NinjaPricer.API.Poe2Scout.Models;
 
 namespace NinjaPricer.API.Poe2Scout;
 
-public class DataDownloader {
-    private const string baseUrl = "https://poe2scout.com/api";
+public class DataDownloader 
+{
+    private const string BaseUrl = "https://poe2scout.com/api";
 
-    private string getLink(string path, string league, int page) {
-        return $"{baseUrl}/{path}?league={league}&page={page}&perPage=250";
+    private static string GetLink(string path, string league, int page)
+    {
+        return $"{BaseUrl}/{path}?league={league}&page={page}&perPage=250";
     }
     
     private int _updating;
@@ -110,14 +112,15 @@ public class DataDownloader {
     private async Task<List<TItem>> LoadData<TItem, TPaged>(string fileName, string category, string league, bool tryWebFirst) where TPaged : class, IPaged<TItem>
     {
         var backupFile = Path.Join(DataDirectory, league, fileName);
-        if (tryWebFirst) {
-            if (await LoadPagedDataFromWeb<TItem, TPaged>(fileName, category, league, backupFile) is {} data)
+        if (tryWebFirst)
+        {
+            if (await LoadPagedDataFromWeb<TItem, TPaged>(fileName, category, league, backupFile) is { } data)
             {
                 return data;
             }
         }
 
-        if (await LoadDataFromBackup<TItem>(fileName, backupFile) is {} data2)
+        if (await LoadDataFromBackup<TItem>(fileName, backupFile) is { } data2)
         {
             return data2;
         }
@@ -161,17 +164,18 @@ public class DataDownloader {
         {
             var items = new List<TItem>();
             var page = 1;
-            TPaged d=null;
+            TPaged container = null;
             do
             {
                 if (Settings.DebugSettings.EnableDebugLogging)
                 {
-                    log($"Downloading {fileName} ({page}/{d?.pages.ToString() ?? "?"})");
+                    log($"Downloading {fileName} ({page}/{container?.pages.ToString() ?? "?"})");
                 }
-                d = JsonConvert.DeserializeObject<TPaged>(await Utils.DownloadFromUrl(getLink(url, league, page)));
-                items.AddRange(d.items);
+
+                container = JsonConvert.DeserializeObject<TPaged>(await Utils.DownloadFromUrl(GetLink(url, league, page)));
+                items.AddRange(container.items);
                 page++;
-            } while (d.currentPage < d.pages);
+            } while (container.currentPage < container.pages);
 
             if (Settings.DebugSettings.EnableDebugLogging)
             {
