@@ -251,6 +251,11 @@ public partial class NinjaPricer
                         case InventoryType.BlightStash:
                             PriceBoxOverItem(customItem, null, Settings.VisualPriceSettings.FontColor);
                             break;
+                        case InventoryType.SocketableStash:
+                        case InventoryType.EssenceStash:
+                            if (Settings.PriceOverlaySettings.ShowOnDenseWindows)
+                                PriceBoxOverItem(customItem, null, Settings.VisualPriceSettings.FontColor);
+                            break;
                     }
                 }
             }
