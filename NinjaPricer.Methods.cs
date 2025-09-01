@@ -170,6 +170,16 @@ public partial class NinjaPricer
                         }
 
                         break;
+                    case ItemTypes.Abyss:
+                        var abyssSearch = CollectedData.Abyss.Find(x => x.text == item.BaseName);
+                        if (abyssSearch != null)
+                        {
+                            item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * abyssSearch.currentPrice;
+                            item.PriceData.ChangeInLast7Days = 0;
+                            item.PriceData.DetailsId = abyssSearch.apiId;
+                        }
+
+                        break;
                     //case ItemTypes.DivinationCard:
                     //    var divinationSearch = CollectedData.DivinationCards.Lines.Find(x => x.Name == item.BaseName);
                     //    if (divinationSearch != null)
