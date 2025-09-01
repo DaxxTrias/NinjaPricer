@@ -330,6 +330,7 @@ public partial class NinjaPricer
             case ItemTypes.Expedition:
             case ItemTypes.Talisman:
             case ItemTypes.Omen:
+            case ItemTypes.Abyss:
                 if (priceInDivines >= 0.1)
                 {
                     var priceInDivinessPerOne = priceInDivines / HoveredItem.CurrencyInfo.StackSize;
