@@ -321,7 +321,7 @@ public partial class NinjaPricer
             case ItemTypes.Rune:
             case ItemTypes.Fragment:
             case ItemTypes.Catalyst:
-            case ItemTypes.DistilledDelirium:
+            case ItemTypes.Delirium:
             case ItemTypes.Artifact:
             case ItemTypes.DivinationCard:
             case ItemTypes.Ultimatum:

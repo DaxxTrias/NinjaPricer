@@ -213,14 +213,14 @@ public class CustomItem
                  !BaseName.StartsWith("Splinter of ") &&
                  ClassName != "Incubator" &&
                  !BaseName.EndsWith(" Catalyst") &&
-                 BaseName != "Valdo's Puzzle Box" && 
-                 !BaseName.StartsWith("Distilled ", StringComparison.Ordinal))
+                 BaseName != "Valdo's Puzzle Box" &&
+                 !Path.Contains("Metadata/Items/Currency/Distilled", StringComparison.Ordinal))
         {
             ItemType = ItemTypes.Currency;
         }
-        else if (ClassName== "StackableCurrency" && BaseName.StartsWith("Distilled ", StringComparison.Ordinal))
+        else if (ClassName== "StackableCurrency" && Path.Contains("Metadata/Items/Currency/Distilled", StringComparison.Ordinal))
         {
-            ItemType = ItemTypes.DistilledDelirium;
+            ItemType = ItemTypes.Delirium;
         }
         else if (BaseName.EndsWith(" Catalyst"))
         {

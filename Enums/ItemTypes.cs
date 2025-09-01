@@ -17,7 +17,7 @@ public enum ItemTypes
     SkillGem,
     Omen,
     Catalyst,
-    DistilledDelirium,
+    Delirium,
     Rune,
     Ultimatum,
     Talisman,

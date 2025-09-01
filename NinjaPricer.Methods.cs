@@ -160,7 +160,7 @@ public partial class NinjaPricer
                         }
 
                         break;
-                    case ItemTypes.DistilledDelirium:
+                    case ItemTypes.Delirium:
                         var distilledSearch = CollectedData.Delirium.Find(x => x.text == item.BaseName);
                         if (distilledSearch != null)
                         {
