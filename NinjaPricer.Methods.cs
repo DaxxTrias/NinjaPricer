@@ -160,13 +160,33 @@ public partial class NinjaPricer
                         }
 
                         break;
-                    case ItemTypes.DistilledDelirium:
+                    case ItemTypes.Delirium:
                         var distilledSearch = CollectedData.Delirium.Find(x => x.text == item.BaseName);
                         if (distilledSearch != null)
                         {
                             item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * distilledSearch.currentPrice;
                             item.PriceData.ChangeInLast7Days = 0;
                             item.PriceData.DetailsId = distilledSearch.apiId;
+                        }
+
+                        break;
+                    case ItemTypes.UncutGem:
+                        var uncutGemSearch = CollectedData.UncutGems.Find(x => x.text == item.BaseName);
+                        if (uncutGemSearch != null)
+                        {
+                            item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * uncutGemSearch.currentPrice;
+                            item.PriceData.ChangeInLast7Days = 0;
+                            item.PriceData.DetailsId = uncutGemSearch.apiId;
+                        }
+
+                        break;
+                    case ItemTypes.Abyss:
+                        var abyssSearch = CollectedData.Abyss.Find(x => x.text == item.BaseName);
+                        if (abyssSearch != null)
+                        {
+                            item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * abyssSearch.currentPrice;
+                            item.PriceData.ChangeInLast7Days = 0;
+                            item.PriceData.DetailsId = abyssSearch.apiId;
                         }
 
                         break;

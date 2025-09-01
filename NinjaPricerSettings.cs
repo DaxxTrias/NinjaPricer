@@ -153,6 +153,7 @@ public class PriceOverlaySettings
     public ToggleNode DoNotDrawWhileAnItemIsHovered { get; set; } = new(false);
 
     public RangeNode<int> BoxHeight { get; set; } = new(15, 0, 100);
+    public ToggleNode ShowOnDenseWindows { get; set; } = new(true);
 }
 
 [Submenu(CollapsedByDefault = true)]

@@ -191,36 +191,41 @@ public class CustomItem
         // sort items into types to use correct json data later from poe.ninja
         // This might need tweaking since if this catches anything other than currency.
         if (ClassName == "StackableCurrency" &&
-                 !BaseName.StartsWith("Crescent Splinter") &&
-                 !BaseName.StartsWith("Simulacrum") &&
-                 !BaseName.EndsWith("Delirium Orb") &&
-                 !BaseName.Contains("Essence") &&
-                 !BaseName.Contains("Rune") &&
-                 !BaseName.EndsWith(" Oil") &&
-                 !BaseName.Contains("Tattoo ") &&
-                 !BaseName.StartsWith("Omen ") &&
-                 !BaseName.EndsWith("Artifact") &&
-                 !BaseName.Contains("Astragali") &&
-                 !BaseName.Contains("Burial Medallion") &&
-                 !BaseName.Contains("Scrap Metal") &&
-                 !BaseName.Contains("Exotic Coinage") &&
-                 !BaseName.Contains("Remnant of") &&
-                 !BaseName.Contains("Timeless ") &&
-                 BaseName != "Prophecy" &&
-                 BaseName != "Charged Compass" &&
-                 ClassName != "MapFragment" &&
-                 !BaseName.EndsWith(" Fossil") &&
-                 !BaseName.StartsWith("Splinter of ") &&
-                 ClassName != "Incubator" &&
-                 !BaseName.EndsWith(" Catalyst") &&
-                 BaseName != "Valdo's Puzzle Box" && 
-                 !BaseName.StartsWith("Distilled ", StringComparison.Ordinal))
+            !BaseName.StartsWith("Crescent Splinter") &&
+            !BaseName.StartsWith("Simulacrum") &&
+            !BaseName.EndsWith("Delirium Orb") &&
+            !BaseName.Contains("Essence") &&
+            !BaseName.Contains("Rune") &&
+            !BaseName.EndsWith(" Oil") &&
+            !BaseName.Contains("Tattoo ") &&
+            !BaseName.StartsWith("Omen ") &&
+            !BaseName.EndsWith("Artifact") &&
+            !BaseName.Contains("Astragali") &&
+            !BaseName.Contains("Burial Medallion") &&
+            !BaseName.Contains("Scrap Metal") &&
+            !BaseName.Contains("Exotic Coinage") &&
+            !BaseName.Contains("Remnant of") &&
+            !BaseName.Contains("Timeless ") &&
+            BaseName != "Prophecy" &&
+            BaseName != "Charged Compass" &&
+            ClassName != "MapFragment" &&
+            !BaseName.EndsWith(" Fossil") &&
+            !BaseName.StartsWith("Splinter of ") &&
+            ClassName != "Incubator" &&
+            !BaseName.EndsWith(" Catalyst") &&
+            BaseName != "Valdo's Puzzle Box" &&
+            !Path.Contains("Metadata/Items/Currency/Distilled", StringComparison.Ordinal) &&
+            !Path.Contains("Metadata/Items/Currency/Abyssal", StringComparison.Ordinal))
         {
             ItemType = ItemTypes.Currency;
         }
-        else if (ClassName== "StackableCurrency" && BaseName.StartsWith("Distilled ", StringComparison.Ordinal))
+        else if (ClassName == "StackableCurrency" && Path.Contains("Metadata/Items/Currency/Distilled", StringComparison.Ordinal))
         {
-            ItemType = ItemTypes.DistilledDelirium;
+            ItemType = ItemTypes.Delirium;
+        }
+        else if (ClassName == "StackableCurrency" && Path.Contains("Metadata/Items/Currency/Abyssal", StringComparison.Ordinal))
+        {
+            ItemType = ItemTypes.Abyss;
         }
         else if (BaseName.EndsWith(" Catalyst"))
         {
@@ -283,6 +288,10 @@ public class CustomItem
         else if (ClassName is "Support Skill Gem" or "Active Skill Gem")
         {
             ItemType = ItemTypes.SkillGem;
+        }
+        else if (ClassName is "UncutReservationGemStackable" or "UncutSkillGemStackable" or "UncutSupportGemStackable")
+        {
+            ItemType = ItemTypes.UncutGem;
         }
         else
         {

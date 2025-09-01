@@ -15,13 +15,15 @@ public enum ItemTypes
     Map,
     Artifact,
     SkillGem,
+    UncutGem,
     Omen,
     Catalyst,
-    DistilledDelirium,
+    Delirium,
     Rune,
     Ultimatum,
     Talisman,
     Expedition,
     Waystone,
     VaultKey,
+    Abyss
 }

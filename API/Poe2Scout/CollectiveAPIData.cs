@@ -20,4 +20,6 @@ public class CollectiveApiData
     public List<Currency.Item> Expeditions { get; set; }
     public List<Currency.Item> Waystones { get; set; }
     public List<Currency.Item> VaultKeys { get; set; }
+    public List<Currency.Item> Abyss { get; set; }
+    public List<Currency.Item> UncutGems { get; set; }
 }

@@ -59,7 +59,7 @@ public class DataDownloader
                 newData.Weapons = await LoadData<Unique.Item, Unique.RootObject>("Weapons.json", "items/unique/weapon", league, tryWebFirst);
                 newData.Armour = await LoadData<Unique.Item, Unique.RootObject>("Armour.json", "items/unique/armour", league, tryWebFirst);
                 newData.Accessories = await LoadData<Unique.Item, Unique.RootObject>("Accessories.json", "items/unique/accessory", league, tryWebFirst);
-                newData.Delirium = await LoadData<Currency.Item, Currency.RootObject>("Delirium.json", "items/currency/deliriuminstill", league, tryWebFirst);
+                newData.Delirium = await LoadData<Currency.Item, Currency.RootObject>("Delirium.json", "items/currency/delirium", league, tryWebFirst);
                 newData.Essences = await LoadData<Currency.Item, Currency.RootObject>("Essences.json", "items/currency/essences", league, tryWebFirst);
                 newData.Runes = await LoadData<Currency.Item, Currency.RootObject>("Runes.json", "items/currency/runes", league, tryWebFirst);
                 newData.Ritual = await LoadData<Currency.Item, Currency.RootObject>("Ritual.json", "items/currency/ritual", league, tryWebFirst);
@@ -69,6 +69,8 @@ public class DataDownloader
                 newData.Expeditions = await LoadData<Currency.Item, Currency.RootObject>("Expedition.json", "items/currency/expedition", league, tryWebFirst);
                 newData.Waystones = await LoadData<Currency.Item, Currency.RootObject>("Waystones.json", "items/currency/waystones", league, tryWebFirst);
                 newData.VaultKeys = await LoadData<Currency.Item, Currency.RootObject>("VaultKeys.json", "items/currency/vaultkeys", league, tryWebFirst);
+                newData.Abyss = await LoadData<Currency.Item, Currency.RootObject>("Abyss.json", "items/currency/abyss", league, tryWebFirst);
+                newData.UncutGems = await LoadData<Currency.Item, Currency.RootObject>("UncutGems.json", "items/currency/uncutgems", league, tryWebFirst);
 
                 new FileInfo(metadataPath).Directory?.Create();
                 await File.WriteAllTextAsync(metadataPath, JsonConvert.SerializeObject(new LeagueMetadata { LastLoadTime = DateTime.UtcNow }));

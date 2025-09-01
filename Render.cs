@@ -251,6 +251,11 @@ public partial class NinjaPricer
                         case InventoryType.BlightStash:
                             PriceBoxOverItem(customItem, null, Settings.VisualPriceSettings.FontColor);
                             break;
+                        case InventoryType.SocketableStash:
+                        case InventoryType.EssenceStash:
+                            if (Settings.PriceOverlaySettings.ShowOnDenseWindows)
+                                PriceBoxOverItem(customItem, null, Settings.VisualPriceSettings.FontColor);
+                            break;
                     }
                 }
             }
@@ -316,7 +321,7 @@ public partial class NinjaPricer
             case ItemTypes.Rune:
             case ItemTypes.Fragment:
             case ItemTypes.Catalyst:
-            case ItemTypes.DistilledDelirium:
+            case ItemTypes.Delirium:
             case ItemTypes.Artifact:
             case ItemTypes.DivinationCard:
             case ItemTypes.Ultimatum:
@@ -325,6 +330,7 @@ public partial class NinjaPricer
             case ItemTypes.Expedition:
             case ItemTypes.Talisman:
             case ItemTypes.Omen:
+            case ItemTypes.Abyss:
                 if (priceInDivines >= 0.1)
                 {
                     var priceInDivinessPerOne = priceInDivines / HoveredItem.CurrencyInfo.StackSize;
@@ -363,6 +369,7 @@ public partial class NinjaPricer
                 break;
             case ItemTypes.Map:
             case ItemTypes.SkillGem:
+            case ItemTypes.UncutGem:
                 if (priceInDivines >= 0.1)
                 {
                     AddText($"\nDivine: {priceInDivinesText}d");
