@@ -368,6 +368,7 @@ public partial class NinjaPricer
                 break;
             case ItemTypes.Map:
             case ItemTypes.SkillGem:
+            case ItemTypes.UncutGem:
                 if (priceInDivines >= 0.1)
                 {
                     AddText($"\nDivine: {priceInDivinesText}d");

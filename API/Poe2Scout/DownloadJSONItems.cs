@@ -70,6 +70,7 @@ public class DataDownloader
                 newData.Waystones = await LoadData<Currency.Item, Currency.RootObject>("Waystones.json", "items/currency/waystones", league, tryWebFirst);
                 newData.VaultKeys = await LoadData<Currency.Item, Currency.RootObject>("VaultKeys.json", "items/currency/vaultkeys", league, tryWebFirst);
                 newData.Abyss = await LoadData<Currency.Item, Currency.RootObject>("Abyss.json", "items/currency/abyss", league, tryWebFirst);
+                newData.UncutGems = await LoadData<Currency.Item, Currency.RootObject>("UncutGems.json", "items/currency/uncutgems", league, tryWebFirst);
 
                 new FileInfo(metadataPath).Directory?.Create();
                 await File.WriteAllTextAsync(metadataPath, JsonConvert.SerializeObject(new LeagueMetadata { LastLoadTime = DateTime.UtcNow }));

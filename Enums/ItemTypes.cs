@@ -15,6 +15,7 @@ public enum ItemTypes
     Map,
     Artifact,
     SkillGem,
+    UncutGem,
     Omen,
     Catalyst,
     Delirium,

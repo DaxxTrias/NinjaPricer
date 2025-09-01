@@ -289,6 +289,10 @@ public class CustomItem
         {
             ItemType = ItemTypes.SkillGem;
         }
+        else if (ClassName is "UncutReservationGemStackable" or "UncutSkillGemStackable" or "UncutSupportGemStackable")
+        {
+            ItemType = ItemTypes.UncutGem;
+        }
         else
         {
             switch (Rarity) // Unique information

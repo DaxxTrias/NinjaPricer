@@ -170,6 +170,16 @@ public partial class NinjaPricer
                         }
 
                         break;
+                    case ItemTypes.UncutGem:
+                        var uncutGemSearch = CollectedData.UncutGems.Find(x => x.text == item.BaseName);
+                        if (uncutGemSearch != null)
+                        {
+                            item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * uncutGemSearch.currentPrice;
+                            item.PriceData.ChangeInLast7Days = 0;
+                            item.PriceData.DetailsId = uncutGemSearch.apiId;
+                        }
+
+                        break;
                     case ItemTypes.Abyss:
                         var abyssSearch = CollectedData.Abyss.Find(x => x.text == item.BaseName);
                         if (abyssSearch != null)
