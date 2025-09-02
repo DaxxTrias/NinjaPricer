@@ -89,8 +89,9 @@ public partial class NinjaPricer
         foreach (var labelOnGround in labelsOnGround)
         {
             var item = labelOnGround.ItemOnGround;
-            if (item.TryGetComponent<HeistRewardDisplay>(out var heistReward) &&
-                     heistReward.RewardItem is { IsValid: true } heistItemEntity)
+            if (item != null &&
+                item.TryGetComponent<HeistRewardDisplay>(out var heistReward) &&
+                heistReward.RewardItem is { IsValid: true } heistItemEntity)
             {
                 result.Add(new ItemOnGround(new CustomItem(heistItemEntity, labelOnGround.Label), GroundItemProcessingType.HeistReward, null));
             }
