@@ -32,11 +32,28 @@ public class DataDownloader
 
     public void StartDataReload(string league, bool forceRefresh)
     {
-        log($"Getting data for {league}");
+        StartDataReload(league, forceRefresh, CancellationToken.None);
+    }
+
+    public void StartDataReload(string league, bool forceRefresh, CancellationToken cancellationToken)
+    {
+        log?.Invoke($"Getting data for {league}");
 
         if (Interlocked.CompareExchange(ref _updating, 1, 0) != 0)
         {
-            log("Update is already in progress");
+            log?.Invoke("Update is already in progress");
+            return;
+        }
+
+        // Snapshot references to avoid races if the host disposes/clears during shutdown
+        var logger = log;
+        var settings = Settings;
+        var dataDir = DataDirectory;
+
+        if (string.IsNullOrWhiteSpace(league) || settings == null || string.IsNullOrWhiteSpace(dataDir))
+        {
+            logger?.Invoke("Data reload aborted: invalid configuration or missing settings.");
+            Interlocked.Exchange(ref _updating, 0);
             return;
         }
 
@@ -44,51 +61,71 @@ public class DataDownloader
         {
             try
             {
-                log("Gathering Data from Poe.Ninja.");
+                if (cancellationToken.IsCancellationRequested)
+                    return;
+
+                logger?.Invoke("Gathering Data from Poe.Ninja.");
 
                 var newData = new CollectiveApiData();
                 var tryWebFirst = forceRefresh;
-                var metadataPath = Path.Join(DataDirectory, league, "meta.json");
-                if (!tryWebFirst && Settings.DataSourceSettings.AutoReload)
+                var metadataPath = Path.Join(dataDir, league, "meta.json");
+                if (!tryWebFirst && settings.DataSourceSettings.AutoReload)
                 {
-                    tryWebFirst = await IsLocalCacheStale(metadataPath);
+                    tryWebFirst = await IsLocalCacheStale(metadataPath, cancellationToken).ConfigureAwait(false);
                 }
 
-                newData.Currency = await LoadData<Currency.Item, Currency.RootObject>("Currency.json", "items/currency/currency", league, tryWebFirst);
-                newData.Breach = await LoadData<Currency.Item, Currency.RootObject>("Breach.json", "items/currency/breachcatalyst", league, tryWebFirst);
-                newData.Weapons = await LoadData<Unique.Item, Unique.RootObject>("Weapons.json", "items/unique/weapon", league, tryWebFirst);
-                newData.Armour = await LoadData<Unique.Item, Unique.RootObject>("Armour.json", "items/unique/armour", league, tryWebFirst);
-                newData.Accessories = await LoadData<Unique.Item, Unique.RootObject>("Accessories.json", "items/unique/accessory", league, tryWebFirst);
-                newData.Delirium = await LoadData<Currency.Item, Currency.RootObject>("Delirium.json", "items/currency/delirium", league, tryWebFirst);
-                newData.Essences = await LoadData<Currency.Item, Currency.RootObject>("Essences.json", "items/currency/essences", league, tryWebFirst);
-                newData.Runes = await LoadData<Currency.Item, Currency.RootObject>("Runes.json", "items/currency/runes", league, tryWebFirst);
-                newData.Ritual = await LoadData<Currency.Item, Currency.RootObject>("Ritual.json", "items/currency/ritual", league, tryWebFirst);
-                newData.Ultimatums = await LoadData<Currency.Item, Currency.RootObject>("Ultimatum.json", "items/currency/ultimatum", league, tryWebFirst);
-                newData.Fragments = await LoadData<Currency.Item, Currency.RootObject>("Fragments.json", "items/currency/fragments", league, tryWebFirst);
-                newData.Talismans = await LoadData<Currency.Item, Currency.RootObject>("Talismans.json", "items/currency/talismans", league, tryWebFirst);
-                newData.Expeditions = await LoadData<Currency.Item, Currency.RootObject>("Expedition.json", "items/currency/expedition", league, tryWebFirst);
-                newData.Waystones = await LoadData<Currency.Item, Currency.RootObject>("Waystones.json", "items/currency/waystones", league, tryWebFirst);
-                newData.VaultKeys = await LoadData<Currency.Item, Currency.RootObject>("VaultKeys.json", "items/currency/vaultkeys", league, tryWebFirst);
-                newData.Abyss = await LoadData<Currency.Item, Currency.RootObject>("Abyss.json", "items/currency/abyss", league, tryWebFirst);
-                newData.UncutGems = await LoadData<Currency.Item, Currency.RootObject>("UncutGems.json", "items/currency/uncutgems", league, tryWebFirst);
+                newData.Currency    = (await LoadData<Currency.Item, Currency.RootObject>("Currency.json",   "items/currency/currency", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))    ?? new();
+                newData.Breach      = (await LoadData<Currency.Item, Currency.RootObject>("Breach.json",     "items/currency/breachcatalyst", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false)) ?? new();
+                newData.Weapons     = (await LoadData<Unique.Item,   Unique.RootObject>(  "Weapons.json",    "items/unique/weapon", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))     ?? new();
+                newData.Armour      = (await LoadData<Unique.Item,   Unique.RootObject>(  "Armour.json",     "items/unique/armour", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))      ?? new();
+                newData.Accessories = (await LoadData<Unique.Item,   Unique.RootObject>(  "Accessories.json","items/unique/accessory", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))  ?? new();
+                newData.Delirium    = (await LoadData<Currency.Item, Currency.RootObject>("Delirium.json",   "items/currency/delirium", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))   ?? new();
+                newData.Essences    = (await LoadData<Currency.Item, Currency.RootObject>("Essences.json",   "items/currency/essences", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))   ?? new();
+                newData.Runes       = (await LoadData<Currency.Item, Currency.RootObject>("Runes.json",      "items/currency/runes", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))      ?? new();
+                newData.Ritual      = (await LoadData<Currency.Item, Currency.RootObject>("Ritual.json",     "items/currency/ritual", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))     ?? new();
+                newData.Ultimatums  = (await LoadData<Currency.Item, Currency.RootObject>("Ultimatum.json",  "items/currency/ultimatum", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))  ?? new();
+                newData.Fragments   = (await LoadData<Currency.Item, Currency.RootObject>("Fragments.json",  "items/currency/fragments", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))  ?? new();
+                newData.Talismans   = (await LoadData<Currency.Item, Currency.RootObject>("Talismans.json",  "items/currency/talismans", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))  ?? new();
+                newData.Expeditions = (await LoadData<Currency.Item, Currency.RootObject>("Expedition.json", "items/currency/expedition", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false)) ?? new();
+                newData.Waystones   = (await LoadData<Currency.Item, Currency.RootObject>("Waystones.json",  "items/currency/waystones", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))  ?? new();
+                newData.VaultKeys   = (await LoadData<Currency.Item, Currency.RootObject>("VaultKeys.json",  "items/currency/vaultkeys", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))  ?? new();
+                newData.Abyss       = (await LoadData<Currency.Item, Currency.RootObject>("Abyss.json",      "items/currency/abyss", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))      ?? new();
+                newData.UncutGems   = (await LoadData<Currency.Item, Currency.RootObject>("UncutGems.json",  "items/currency/uncutgems", league, tryWebFirst, settings, logger, dataDir, cancellationToken).ConfigureAwait(false))  ?? new();
+
+                if (cancellationToken.IsCancellationRequested)
+                    return;
 
                 new FileInfo(metadataPath).Directory?.Create();
-                await File.WriteAllTextAsync(metadataPath, JsonConvert.SerializeObject(new LeagueMetadata { LastLoadTime = DateTime.UtcNow }));
+                await File.WriteAllTextAsync(metadataPath, JsonConvert.SerializeObject(new LeagueMetadata { LastLoadTime = DateTime.UtcNow }), cancellationToken).ConfigureAwait(false);
 
-                log("Finished Gathering Data from Poe.Ninja.");
+                logger?.Invoke("Finished Gathering Data from Poe.Ninja.");
                 CollectedData = newData;
-                DivineValue = CollectedData.Currency.Find(x => x.text == "Divine Orb")?.currentPrice;
-                log("Updated CollectedData.");
+                DivineValue = newData.Currency?.Find(x => x.text == "Divine Orb")?.currentPrice;
+                logger?.Invoke("Updated CollectedData.");
+            }
+            catch (OperationCanceledException)
+            {
+                logger?.Invoke("Data reload cancelled.");
+            }
+            catch (Exception ex)
+            {
+                // Swallow and log to avoid unobserved task exceptions
+                logger?.Invoke($"Data reload failed: {ex}");
             }
             finally
             {
                 Interlocked.Exchange(ref _updating, 0);
             }
-        });
+        }, cancellationToken);
     }
 
 
     private async Task<bool> IsLocalCacheStale(string metadataPath)
+    {
+        return await IsLocalCacheStale(metadataPath, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private async Task<bool> IsLocalCacheStale(string metadataPath, CancellationToken token)
     {
         if (!File.Exists(metadataPath))
         {
@@ -97,14 +134,14 @@ public class DataDownloader
 
         try
         {
-            var metadata = JsonConvert.DeserializeObject<LeagueMetadata>(await File.ReadAllTextAsync(metadataPath));
+            var metadata = JsonConvert.DeserializeObject<LeagueMetadata>(await File.ReadAllTextAsync(metadataPath, token).ConfigureAwait(false));
             return DateTime.UtcNow - metadata.LastLoadTime > TimeSpan.FromMinutes(Settings.DataSourceSettings.ReloadPeriod);
         }
         catch (Exception ex)
         {
-            if (Settings.DebugSettings.EnableDebugLogging)
+            if (Settings?.DebugSettings?.EnableDebugLogging == true)
             {
-                log($"Metadata loading failed: {ex}");
+                log?.Invoke($"Metadata loading failed: {ex}");
             }
 
             return true;
@@ -113,23 +150,28 @@ public class DataDownloader
 
     private async Task<List<TItem>> LoadData<TItem, TPaged>(string fileName, string category, string league, bool tryWebFirst) where TPaged : class, IPaged<TItem>
     {
-        var backupFile = Path.Join(DataDirectory, league, fileName);
+        return await LoadData<TItem, TPaged>(fileName, category, league, tryWebFirst, Settings, log, DataDirectory, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private async Task<List<TItem>> LoadData<TItem, TPaged>(string fileName, string category, string league, bool tryWebFirst, NinjaPricerSettings settings, Action<string> logger, string dataDir, CancellationToken token) where TPaged : class, IPaged<TItem>
+    {
+        var backupFile = Path.Join(dataDir, league, fileName);
         if (tryWebFirst)
         {
-            if (await LoadPagedDataFromWeb<TItem, TPaged>(fileName, category, league, backupFile) is { } data)
+            if (await LoadPagedDataFromWeb<TItem, TPaged>(fileName, category, league, backupFile, settings, logger, token).ConfigureAwait(false) is { } data)
             {
                 return data;
             }
         }
 
-        if (await LoadDataFromBackup<TItem>(fileName, backupFile) is { } data2)
+        if (await LoadDataFromBackup<TItem>(fileName, backupFile, settings, logger, token).ConfigureAwait(false) is { } data2)
         {
             return data2;
         }
 
         if (!tryWebFirst)
         {
-            return await LoadPagedDataFromWeb<TItem, TPaged>(fileName, category, league, backupFile);
+            return await LoadPagedDataFromWeb<TItem, TPaged>(fileName, category, league, backupFile, settings, logger, token).ConfigureAwait(false);
         }
 
         return null;
@@ -137,30 +179,40 @@ public class DataDownloader
 
     private async Task<List<T>> LoadDataFromBackup<T>(string fileName, string backupFile)
     {
+        return await LoadDataFromBackup<T>(fileName, backupFile, Settings, log, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private async Task<List<T>> LoadDataFromBackup<T>(string fileName, string backupFile, NinjaPricerSettings settings, Action<string> logger, CancellationToken token)
+    {
         if (File.Exists(backupFile))
         {
             try
             {
-                var data = JsonConvert.DeserializeObject<List<T>>(await File.ReadAllTextAsync(backupFile));
+                var data = JsonConvert.DeserializeObject<List<T>>(await File.ReadAllTextAsync(backupFile, token).ConfigureAwait(false));
                 return data;
             }
             catch (Exception backupEx)
             {
-                if (Settings.DebugSettings.EnableDebugLogging)
+                if (settings?.DebugSettings?.EnableDebugLogging == true)
                 {
-                    log($"{fileName} backup data load failed: {backupEx}");
+                    logger?.Invoke($"{fileName} backup data load failed: {backupEx}");
                 }
             }
         }
-        else if (Settings.DebugSettings.EnableDebugLogging)
+        else if (settings?.DebugSettings?.EnableDebugLogging == true)
         {
-            log($"No backup for {fileName}");
+            logger?.Invoke($"No backup for {fileName}");
         }
 
         return null;
     }
 
     private async Task<List<TItem>> LoadPagedDataFromWeb<TItem, TPaged>(string fileName, string url, string league, string backupFile) where TPaged: class, IPaged<TItem>
+    {
+        return await LoadPagedDataFromWeb<TItem, TPaged>(fileName, url, league, backupFile, Settings, log, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private async Task<List<TItem>> LoadPagedDataFromWeb<TItem, TPaged>(string fileName, string url, string league, string backupFile, NinjaPricerSettings settings, Action<string> logger, CancellationToken token) where TPaged: class, IPaged<TItem>
     {
         try
         {
@@ -169,44 +221,64 @@ public class DataDownloader
             TPaged container = null;
             do
             {
-                if (Settings.DebugSettings.EnableDebugLogging)
+                if (token.IsCancellationRequested)
+                    break;
+
+                if (settings?.DebugSettings?.EnableDebugLogging == true)
                 {
-                    log($"Downloading {fileName} ({page}/{container?.pages.ToString() ?? "?"})");
+                    logger?.Invoke($"Downloading {fileName} ({page}/{container?.pages.ToString() ?? "?"})");
                 }
 
-                container = JsonConvert.DeserializeObject<TPaged>(await Utils.DownloadFromUrl(GetLink(url, league, page)));
-                items.AddRange(container.items);
+                var json = await Utils.DownloadFromUrl(GetLink(url, league, page)).ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    // Stop if web returned nothing (shutdown or network issue)
+                    break;
+                }
+
+                container = JsonConvert.DeserializeObject<TPaged>(json);
+                if (container == null)
+                {
+                    break;
+                }
+
+                items.AddRange(container.items ?? Array.Empty<TItem>());
                 page++;
             } while (container.currentPage < container.pages);
 
-            if (Settings.DebugSettings.EnableDebugLogging)
+            if (settings?.DebugSettings?.EnableDebugLogging == true)
             {
-                log($"{fileName} downloaded");
+                logger?.Invoke($"{fileName} downloaded");
             }
 
             try
             {
-                new FileInfo(backupFile).Directory.Create();
-                await File.WriteAllTextAsync(backupFile, JsonConvert.SerializeObject(items, Formatting.Indented));
+                new FileInfo(backupFile).Directory?.Create();
+                await File.WriteAllTextAsync(backupFile, JsonConvert.SerializeObject(items, Formatting.Indented), token).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 var errorPath = backupFile + ".error";
-                new FileInfo(errorPath).Directory.Create();
-                await File.WriteAllTextAsync(errorPath, ex.ToString());
-                if (Settings.DebugSettings.EnableDebugLogging)
+                new FileInfo(errorPath).Directory?.Create();
+                await File.WriteAllTextAsync(errorPath, ex.ToString(), token).ConfigureAwait(false);
+                if (settings?.DebugSettings?.EnableDebugLogging == true)
                 {
-                    log($"{fileName} save failed: {ex}");
+                    logger?.Invoke($"{fileName} save failed: {ex}");
                 }
             }
 
             return items;
         }
+        catch (OperationCanceledException)
+        {
+            logger?.Invoke($"{fileName} download cancelled");
+            return null;
+        }
         catch (Exception ex)
         {
-            if (Settings.DebugSettings.EnableDebugLogging)
+            if (settings?.DebugSettings?.EnableDebugLogging == true)
             {
-                log($"{fileName} fresh data download failed: {ex}");
+                logger?.Invoke($"{fileName} fresh data download failed: {ex}");
             }
 
             return null;
