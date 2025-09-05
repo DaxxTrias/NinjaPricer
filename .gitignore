@@ -266,3 +266,5 @@ __pycache__/
 # FreeFileSync
 *.ffs*
 Errors.txt
+
+.cursorrules
