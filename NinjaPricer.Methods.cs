@@ -46,7 +46,39 @@ public partial class NinjaPricer
         { "Chance Shard", "Orb of Chance" },
     };
 
-    private double DivinePrice => _downloader.DivineValue ?? 0;
+        private double DivinePrice => _downloader.DivineValue ?? 0;
+ 
+     private double ChaosPerExalt
+     {
+         get
+         {
+             try
+             {
+                 var chaos = CollectedData?.Currency?.Find(x => string.Equals(x.text, "Chaos Orb", StringComparison.InvariantCultureIgnoreCase));
+                 return chaos is { currentPrice: > 0 } ? 1d / chaos.currentPrice : double.NaN;
+             }
+             catch
+             {
+                 return double.NaN;
+             }
+         }
+     }
+ 
+     private string FormatExWithChaosFallback(double exValue)
+     {
+         var exText = exValue.FormatNumber(Settings.VisualPriceSettings.SignificantDigits.Value, 0);
+         if (Settings.VisualPriceSettings.ShowChaosFallbackBelowOneEx && exValue > 0 && exValue < 1)
+         {
+             var chaosPerEx = ChaosPerExalt;
+             if (!double.IsNaN(chaosPerEx) && !double.IsInfinity(chaosPerEx))
+             {
+                 var chaos = exValue * chaosPerEx;
+                 var chaosText = chaos.FormatNumber(2, forceDecimals: true);
+                 return $"{exText}ex ({chaosText}c)";
+             }
+         }
+         return $"{exText}ex";
+     }
 
     private List<NormalInventoryItem> GetInventoryItems()
     {

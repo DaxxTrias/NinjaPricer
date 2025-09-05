@@ -313,7 +313,7 @@ public partial class NinjaPricer
         var priceInChaos = HoveredItem.PriceData.MinChaosValue;
         var priceInDivines = priceInChaos / DivinePrice;
         var priceInDivinesText = priceInDivines.FormatNumber(2);
-        var minPriceText = priceInChaos.FormatNumber(2, Settings.VisualPriceSettings.MaximalValueForFractionalDisplay);
+        var minPriceText = FormatExWithChaosFallback(priceInChaos);
         AddSection();
         switch (HoveredItem.ItemType)
         {
@@ -339,7 +339,7 @@ public partial class NinjaPricer
                         ? $"\nDivine: {priceInDivinesText}d ({priceInDivinessPerOne.FormatNumber(2)}d per one)"
                         : $"\nDivine: {priceInDivinesText}d");
                 }
-                AddText($"\nExalt: {minPriceText}ex ({(priceInChaos / HoveredItem.CurrencyInfo.StackSize).FormatNumber(2, Settings.VisualPriceSettings.MaximalValueForFractionalDisplay)}ex per one)");
+                AddText($"\nExalt: {minPriceText} ({((priceInChaos / HoveredItem.CurrencyInfo.StackSize)).FormatNumber(2, Settings.VisualPriceSettings.MaximalValueForFractionalDisplay)}ex per one)");
                 break;
             case ItemTypes.UniqueAccessory:
             case ItemTypes.UniqueArmour:
@@ -362,10 +362,10 @@ public partial class NinjaPricer
                         : $"\nDivine: {priceInDivinesText}d");
                 }
 
-                var maxPriceText = HoveredItem.PriceData.MaxChaosValue.FormatNumber(2, Settings.VisualPriceSettings.MaximalValueForFractionalDisplay);
+                var maxPriceText = FormatExWithChaosFallback(HoveredItem.PriceData.MaxChaosValue);
                 AddText(minPriceText != maxPriceText 
-                    ? $"\nExalt: {minPriceText}ex - {maxPriceText}ex" 
-                    : $"\nExalt: {minPriceText}ex");
+                    ? $"\nExalt: {minPriceText} - {maxPriceText}" 
+                    : $"\nExalt: {minPriceText}");
 
                 break;
             case ItemTypes.Map:
@@ -376,7 +376,7 @@ public partial class NinjaPricer
                     AddText($"\nDivine: {priceInDivinesText}d");
                 }
 
-                AddText($"\nExalt: {minPriceText}ex");
+                AddText($"\nExalt: {minPriceText}");
                 break;
         }
 
@@ -499,7 +499,6 @@ public partial class NinjaPricer
             // ignored
             if (Settings.DebugSettings.EnableDebugLogging)
             {
-
                 LogMessage("Error in: VisibleInventoryValue, restart PoEHUD.", 5, Color.Red);
                 LogMessage(e.ToString(), 5, Color.Orange);
             }

@@ -168,6 +168,9 @@ public class VisualPriceSettings
 
     [Menu(null, "Set to 0 to disable")]
     public RangeNode<float> MaximalValueForFractionalDisplay { get; set; } = new(0.2f, 0, 1);
+
+    [Menu(null, "Also show chaos for values under 1 ex")] 
+    public ToggleNode ShowChaosFallbackBelowOneEx { get; set; } = new(true);
 }
 
 [Submenu(CollapsedByDefault = true)]
