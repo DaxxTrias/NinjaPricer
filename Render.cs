@@ -449,7 +449,7 @@ public partial class NinjaPricer
     {
         return items
             .Where(x => x.PriceData.MinChaosValue != 0)
-            .GroupBy(x => (x.PriceData.DetailsId, x.BaseName, x.UniqueName, x.ItemType, x.CapturedMonsterName))
+            .GroupBy(x => (x.PriceData.DetailsId, x.BaseName, x.UniqueName, x.ItemType))
             .Select(group => new CustomItem
             {
                 PriceData = { MinChaosValue = group.Sum(i => i.PriceData.MinChaosValue) },
