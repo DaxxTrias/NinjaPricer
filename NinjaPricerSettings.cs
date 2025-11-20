@@ -156,6 +156,10 @@ public class PriceOverlaySettings
 
     public RangeNode<int> BoxHeight { get; set; } = new(15, 0, 100);
     public ToggleNode ShowOnDenseWindows { get; set; } = new(true);
+    
+    public ToggleNode ShowUnitValue { get; set; } = new(false);
+    
+    public RangeNode<float> UnitValueHintThreshold { get; set; } = new(0.9f, 0, 100);
 }
 
 [Submenu(CollapsedByDefault = true)]
