@@ -144,29 +144,90 @@ public partial class NinjaPricer
         if (Settings.DebugSettings.EnableDebugLogging)
             LogMessage($"{GetCurrentMethod()}: Selected League: {Settings.DataSourceSettings.League.Value}", 5, Color.White);
 
-        var tabType = StashPanel.VisibleStash?.InvType;
+        InventoryType? tabType = null;
+        try
+        {
+            tabType = StashPanel.VisibleStash?.InvType;
+        }
+        catch
+        {
+            // VisibleStash can throw when internal collections have null entries during stash transitions
+            tabType = null;
+        }
 
         // Everything is updated, lets check if we should draw
         if (ShouldUpdateValues())
         {
-            // Format stash items
-            ItemList = StashPanel.IsVisible && tabType != null ? StashPanel.VisibleStash?.VisibleInventoryItems?.ToList() ?? [] : [];
+            // Format stash items with defensive access to VisibleStash
+            ItemList = [];
+            try
+            {
+                if (StashPanel.IsVisible && tabType != null)
+                {
+                    ItemList = StashPanel.VisibleStash?.VisibleInventoryItems?.ToList() ?? [];
+                }
+            }
+            catch
+            {
+                // VisibleStash access can throw during stash/vendor transitions
+                ItemList = [];
+            }
+
             if (ItemList.Count == 0)
             {
-                if (Settings.LeagueSpecificSettings.ShowRitualWindowPrices &&
-                    GameController.Game.IngameState.IngameUi.RitualWindow is { IsVisible: true, Items: { Count: > 0 } ritualItems })
+                try
                 {
-                    ItemList = ritualItems;
+                    if (Settings.LeagueSpecificSettings.ShowRitualWindowPrices &&
+                        GameController.Game.IngameState.IngameUi.RitualWindow is { IsVisible: true, Items: { Count: > 0 } ritualItems })
+                    {
+                        ItemList = ritualItems;
+                    }
+                    else if (Settings.LeagueSpecificSettings.ShowPurchaseWindowPrices)
+                    {
+                        // Defensively access PurchaseWindow.TabContainer.VisibleStash
+                        var purchaseWindow = GameController.Game.IngameState.IngameUi.PurchaseWindow;
+                        if (purchaseWindow?.TabContainer != null)
+                        {
+                            try
+                            {
+                                var visibleStash = purchaseWindow.TabContainer.VisibleStash;
+                                if (visibleStash is { IsVisible: true, VisibleInventoryItems: { Count: > 0 } purchaseWindowItems })
+                                {
+                                    ItemList = purchaseWindowItems.ToList();
+                                }
+                            }
+                            catch
+                            {
+                                // VisibleStash can throw when vendor inventory is in transition
+                            }
+                        }
+
+                        // Try hideout purchase window if regular purchase window didn't work
+                        if (ItemList.Count == 0)
+                        {
+                            var hideoutPurchaseWindow = GameController.Game.IngameState.IngameUi.PurchaseWindowHideout;
+                            if (hideoutPurchaseWindow?.TabContainer != null)
+                            {
+                                try
+                                {
+                                    var visibleStash = hideoutPurchaseWindow.TabContainer.VisibleStash;
+                                    if (visibleStash is { IsVisible: true, VisibleInventoryItems: { Count: > 0 } hideoutPurchaseWindowItems })
+                                    {
+                                        ItemList = hideoutPurchaseWindowItems.ToList();
+                                    }
+                                }
+                                catch
+                                {
+                                    // VisibleStash can throw when vendor inventory is in transition
+                                }
+                            }
+                        }
+                    }
                 }
-                else if (Settings.LeagueSpecificSettings.ShowPurchaseWindowPrices &&
-                         GameController.Game.IngameState.IngameUi.PurchaseWindow?.TabContainer?.VisibleStash is { IsVisible: true, VisibleInventoryItems: { Count: > 0 } purchaseWindowItems })
+                catch
                 {
-                    ItemList = purchaseWindowItems.ToList();
-                }
-                else if (Settings.LeagueSpecificSettings.ShowPurchaseWindowPrices &&
-                         GameController.Game.IngameState.IngameUi.PurchaseWindowHideout?.TabContainer?.VisibleStash is { IsVisible: true, VisibleInventoryItems: { Count: > 0 } hideoutPurchaseWindowItems })
-                {
-                    ItemList = hideoutPurchaseWindowItems.ToList();
+                    // Catch any other exceptions during item list retrieval
+                    ItemList = [];
                 }
             }
 
@@ -234,7 +295,17 @@ public partial class NinjaPricer
         {
             VisibleStashValue();
 
-            var tabType = StashPanel.VisibleStash?.InvType;
+            InventoryType? tabTypeForDraw = null;
+            try
+            {
+                tabTypeForDraw = StashPanel.VisibleStash?.InvType;
+            }
+            catch
+            {
+                // VisibleStash can throw when internal collections have null entries
+                tabTypeForDraw = null;
+            }
+
             if (Settings.PriceOverlaySettings.Show &&
                 (!Settings.PriceOverlaySettings.DoNotDrawWhileAnItemIsHovered || HoveredItem == null))
             {
@@ -242,7 +313,7 @@ public partial class NinjaPricer
                 {
                     if (customItem.ItemType == ItemTypes.None) continue;
 
-                    switch (tabType)
+                    switch (tabTypeForDraw)
                     {
                         case InventoryType.CurrencyStash:
                         case InventoryType.FragmentStash:
