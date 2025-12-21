@@ -61,17 +61,37 @@ public partial class NinjaPricer
         var result = new List<ItemOnGround>();
         foreach (var description in labelsOnGround)
         {
-            if (description.Entity.TryGetComponent<WorldItem>(out var worldItem) &&
-                worldItem.ItemEntity is { IsValid: true } groundItemEntity)
+            try
             {
-                var customItem = prevDict.GetValueOrDefault((description.Label?.Address, groundItemEntity.Address))?.Item;
-                if (customItem == null)
+                WorldItem worldItem = null;
+                try
                 {
-                    customItem = new CustomItem(groundItemEntity, description.Label);
-                    GetValue(customItem);
+                    // TryGetComponent can throw IndexOutOfRangeException when entity component dictionary is corrupted
+                    if (!description.Entity.TryGetComponent(out worldItem))
+                        continue;
+                }
+                catch
+                {
+                    // Component dictionary corrupted during entity transition
+                    continue;
                 }
 
-                result.Add(new ItemOnGround(customItem, GroundItemProcessingType.WorldItem, description.ClientRect));
+                if (worldItem != null && worldItem.ItemEntity is { IsValid: true } groundItemEntity)
+                {
+                    var customItem = prevDict.GetValueOrDefault((description.Label?.Address, groundItemEntity.Address))?.Item;
+                    if (customItem == null)
+                    {
+                        customItem = new CustomItem(groundItemEntity, description.Label);
+                        GetValue(customItem);
+                    }
+
+                    result.Add(new ItemOnGround(customItem, GroundItemProcessingType.WorldItem, description.ClientRect));
+                }
+            }
+            catch
+            {
+                // Skip items that cause exceptions during processing
+                continue;
             }
         }
         result.AddRange(_slowGroundItems.Value);
@@ -88,12 +108,34 @@ public partial class NinjaPricer
         var result = new List<ItemOnGround>();
         foreach (var labelOnGround in labelsOnGround)
         {
-            var item = labelOnGround.ItemOnGround;
-            if (item != null &&
-                item.TryGetComponent<HeistRewardDisplay>(out var heistReward) &&
-                heistReward.RewardItem is { IsValid: true } heistItemEntity)
+            try
             {
-                result.Add(new ItemOnGround(new CustomItem(heistItemEntity, labelOnGround.Label), GroundItemProcessingType.HeistReward, null));
+                var item = labelOnGround.ItemOnGround;
+                if (item != null)
+                {
+                    HeistRewardDisplay heistReward = null;
+                    try
+                    {
+                        // TryGetComponent can throw IndexOutOfRangeException when entity component dictionary is corrupted
+                        if (!item.TryGetComponent(out heistReward))
+                            continue;
+                    }
+                    catch
+                    {
+                        // Component dictionary corrupted during entity transition
+                        continue;
+                    }
+
+                    if (heistReward != null && heistReward.RewardItem is { IsValid: true } heistItemEntity)
+                    {
+                        result.Add(new ItemOnGround(new CustomItem(heistItemEntity, labelOnGround.Label), GroundItemProcessingType.HeistReward, null));
+                    }
+                }
+            }
+            catch
+            {
+                // Skip items that cause exceptions during processing
+                continue;
             }
         }
 
