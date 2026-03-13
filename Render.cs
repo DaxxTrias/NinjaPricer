@@ -251,7 +251,7 @@ public partial class NinjaPricer
                         case InventoryType.DeliriumStash:
                         case InventoryType.UltimatumStash:
                         case InventoryType.BlightStash:
-                            PriceBoxOverItem(customItem, null, Settings.VisualPriceSettings.FontColor);
+                            PriceBoxOverItem(customItem, null);
                             break;
                         case InventoryType.SocketableStash:
                         case InventoryType.EssenceStash:
@@ -328,7 +328,7 @@ public partial class NinjaPricer
                             {
                                 continue;
                             }
-
+                            
                             Graphics.DrawTextWithBackground(text2, textRect2.TopLeft, totalOwned >= Settings.VisualPriceSettings.ValuableColorThreshold
                                 ? Settings.VisualPriceSettings.ValuableColor
                                 : Settings.VisualPriceSettings.FontColor, Color.Black);
@@ -353,11 +353,11 @@ public partial class NinjaPricer
             return;
         }
 
+        var (textColor, backgroundColor) = GetOverlayColors(customItem.PriceData.MinChaosValue);
+        var textCenter = new Vector2(topRight.X - textSize.X / 2, topRight.Y);
         Graphics.DrawTextWithBackground(text,
-            topRight,
-            customItem.PriceData.MinChaosValue >= Settings.VisualPriceSettings.ValuableColorThreshold
-                ? Settings.VisualPriceSettings.ValuableColor
-                : Settings.VisualPriceSettings.FontColor, FontAlign.Right, Color.Black);
+            textCenter,
+            textColor, FontAlign.Center, backgroundColor);
     }
 
     private void ProcessHoveredItem()
@@ -468,14 +468,20 @@ public partial class NinjaPricer
         if (!string.IsNullOrWhiteSpace(tooltipText))
         {
             ImGui.BeginTooltip();
-            var valuable = priceInChaos >= Settings.VisualPriceSettings.ValuableColorThreshold.Value;
-            if (valuable)
+            var hoverTextColor = priceInChaos >= Settings.VisualPriceSettings.ExtraValuableColorThreshold.Value
+                ? Settings.VisualPriceSettings.ExtraValuableColor
+                : priceInChaos >= Settings.VisualPriceSettings.ValuableColorThreshold.Value
+                    ? Settings.VisualPriceSettings.ValuableColor
+                    : priceInChaos >= Settings.VisualPriceSettings.SemiValuableColorThreshold.Value
+                        ? Settings.VisualPriceSettings.SemiValuableColor
+                        : null;
+            if (hoverTextColor != null)
             {
-                ImGui.PushStyleColor(ImGuiCol.Text, Settings.VisualPriceSettings.ValuableColor.Value.ToImgui());
+                ImGui.PushStyleColor(ImGuiCol.Text, hoverTextColor.Value.ToImgui());
             }
 
             ImGui.TextUnformatted(tooltipText);
-            if (valuable)
+            if (hoverTextColor != null)
             {
                 ImGui.PopStyleColor();
             }
@@ -572,7 +578,27 @@ public partial class NinjaPricer
         }
     }
 
-    private void PriceBoxOverItem(CustomItem item, RectangleF? containerBox, Color textColor)
+    private (Color TextColor, Color BackgroundColor) GetOverlayColors(double chaosValue)
+    {
+        if (chaosValue >= Settings.VisualPriceSettings.ExtraValuableColorThreshold.Value)
+        {
+            return (Settings.VisualPriceSettings.ExtraValuableColor, Settings.VisualPriceSettings.ExtraValuableBackgroundColor);
+        }
+
+        if (chaosValue >= Settings.VisualPriceSettings.ValuableColorThreshold.Value)
+        {
+            return (Settings.VisualPriceSettings.ValuableColor, Settings.VisualPriceSettings.BackgroundColor);
+        }
+
+        if (chaosValue >= Settings.VisualPriceSettings.SemiValuableColorThreshold.Value)
+        {
+            return (Settings.VisualPriceSettings.SemiValuableColor, Settings.VisualPriceSettings.BackgroundColor);
+        }
+
+        return (Settings.VisualPriceSettings.FontColor, Settings.VisualPriceSettings.BackgroundColor);
+    }
+
+    private void PriceBoxOverItem(CustomItem item, RectangleF? containerBox, Color? textColor = null, Color? backgroundColor = null)
     {
         var box = item.Element.GetClientRect();
         var drawBox = new RectangleF(box.X, box.Y - 2, box.Width, -Settings.PriceOverlaySettings.BoxHeight);
@@ -581,10 +607,11 @@ public partial class NinjaPricer
         if ((containerBox == null || contains) && 
             !drawBox.Intersects(HoveredItem?.Element?.Tooltip?.GetClientRectCache ?? default))
         {
-            Graphics.DrawBox(drawBox, Settings.VisualPriceSettings.BackgroundColor);
+            var overlayColors = GetOverlayColors(item.PriceData.MinChaosValue);
+            Graphics.DrawBox(drawBox, backgroundColor ?? overlayColors.BackgroundColor);
             var textPosition = new Vector2(drawBox.Center.X, drawBox.Center.Y - ImGui.GetTextLineHeight() / 2);
             Graphics.DrawText(item.PriceData.MinChaosValue.FormatNumber(Settings.VisualPriceSettings.SignificantDigits.Value), textPosition,
-                textColor, FontAlign.Center);
+                textColor ?? overlayColors.TextColor, FontAlign.Center);
         }
     }
 
@@ -780,7 +807,7 @@ public partial class NinjaPricer
 
                     if (!tooltipRect.Intersects(box) && !leftPanelRect.Intersects(box) && !rightPanelRect.Intersects(box))
                     {
-                        var isValuable = item.PriceData.MaxChaosValue >= Settings.VisualPriceSettings.ValuableColorThreshold;
+                        var isValuable = item.PriceData.MaxChaosValue >= Settings.VisualPriceSettings.ValuableColorThreshold.Value;
 
                         if (Settings.GroundItemSettings.PriceItemsOnGround &&
                             (Settings.GroundItemSettings.OnlyPriceItemsAboveThreshold

@@ -164,8 +164,13 @@ public class VisualPriceSettings
     public RangeNode<int> SignificantDigits { get; set; } = new(2, 0, 2);
     public ColorNode FontColor { get; set; } = Color.FromArgb(216, 216, 216);
     public ColorNode BackgroundColor { get; set; } = Color.FromArgb(0, 0, 0);
+    public RangeNode<int> SemiValuableColorThreshold { get; set; } = new(20, 0, 100000);
+    public ColorNode SemiValuableColor { get; set; } = Color.FromArgb(0, 240, 56);
     public RangeNode<int> ValuableColorThreshold { get; set; } = new(50, 0, 100000);
-    public ColorNode ValuableColor { get; set; } = new(Color.Violet);
+    public ColorNode ValuableColor { get; set; } = Color.FromArgb(238, 130, 145);
+    public RangeNode<int> ExtraValuableColorThreshold { get; set; } = new(500, 0, 100000);
+    public ColorNode ExtraValuableColor { get; set; } = Color.FromArgb(255, 166, 0);
+    public ColorNode ExtraValuableBackgroundColor { get; set; } = Color.FromArgb(89, 0, 255);
 
     [Menu(null, "Set to 0 to disable")]
     public RangeNode<float> MaximalValueForFractionalDisplay { get; set; } = new(0.2f, 0, 1);
