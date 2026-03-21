@@ -236,44 +236,23 @@ public partial class NinjaPricer
             VisibleStashValue();
 
             var tabType = StashPanel.VisibleStash?.InvType;
-            if (Settings.PriceOverlaySettings.Show &&
-                (!Settings.PriceOverlaySettings.DoNotDrawWhileAnItemIsHovered || HoveredItem == null))
-            {
-                foreach (var customItem in ItemsToDrawList)
-                {
-                    if (customItem.ItemType == ItemTypes.None) continue;
+            if (!Settings.PriceOverlaySettings.Show ||
+                Settings.PriceOverlaySettings.DoNotDrawWhileAnItemIsHovered && HoveredItem != null ||
+                !Settings.StashValueSettings.IsOverlayEnabledFor(tabType)) return;
 
-                    switch (tabType)
-                    {
-                        case InventoryType.CurrencyStash:
-                        case InventoryType.FragmentStash:
-                        case InventoryType.DelveStash:
-                        case InventoryType.DeliriumStash:
-                        case InventoryType.UltimatumStash:
-                        case InventoryType.BlightStash:
-                            PriceBoxOverItem(customItem, null);
-                            break;
-                        case InventoryType.SocketableStash:
-                        case InventoryType.EssenceStash:
-                            if (Settings.PriceOverlaySettings.ShowOnDenseWindows)
-                                PriceBoxOverItem(customItem, null, Settings.VisualPriceSettings.FontColor);
-                            break;
-                    }
-                }
+            foreach (var customItem in ItemsToDrawList.Where(customItem => customItem.ItemType != ItemTypes.None))
+            {
+                PriceBoxOverItem(customItem, null, null, null, Settings.StashValueSettings.GetPriceOverlayLayout(tabType));
             }
         }
         else if (Settings.LeagueSpecificSettings.ShowRitualWindowPrices && GameController.IngameState.IngameUi.RitualWindow.IsVisible ||
                  Settings.LeagueSpecificSettings.ShowPurchaseWindowPrices && (GameController.IngameState.IngameUi.PurchaseWindow.IsVisible ||
                                                                               GameController.IngameState.IngameUi.PurchaseWindowHideout.IsVisible))
         {
-            if (Settings.PriceOverlaySettings.Show &&
-                (!Settings.PriceOverlaySettings.DoNotDrawWhileAnItemIsHovered || HoveredItem == null))
+            if (!Settings.PriceOverlaySettings.Show || Settings.PriceOverlaySettings.DoNotDrawWhileAnItemIsHovered && HoveredItem != null) return;
+            foreach (var customItem in ItemsToDrawList.Where(customItem => customItem.ItemType != ItemTypes.None))
             {
-                foreach (var customItem in ItemsToDrawList)
-                {
-                    if (customItem.ItemType == ItemTypes.None) continue;
-                    DrawItemPriceInline(customItem);
-                }
+                DrawItemPriceInline(customItem);
             }
         }
     }
@@ -598,29 +577,38 @@ public partial class NinjaPricer
         return (Settings.VisualPriceSettings.FontColor, Settings.VisualPriceSettings.BackgroundColor);
     }
 
-    private void PriceBoxOverItem(CustomItem item, RectangleF? containerBox, Color? textColor = null, Color? backgroundColor = null)
+    private void PriceBoxOverItem(CustomItem item, RectangleF? containerBox, Color? textColor = null, Color? backgroundColor = null, StashPriceOverlayLayout layout = null)
     {
+        layout ??= new StashPriceOverlayLayout();
+
         var box = item.Element.GetClientRect();
-        var drawBox = new RectangleF(box.X, box.Y - 2, box.Width, -Settings.PriceOverlaySettings.BoxHeight);
+        var h = Math.Abs(Settings.PriceOverlaySettings.BoxHeight.Value);
+
+        const float gap = 2f;
+        var barTopY = layout.Vertical switch
+        {
+            PriceOverlayVertical.Top when layout.Edge == PriceOverlayEdge.Outside => box.Top - gap - h,
+            PriceOverlayVertical.Top => box.Top + gap,
+            PriceOverlayVertical.Bottom when layout.Edge == PriceOverlayEdge.Outside => box.Bottom + gap,
+            _ => box.Bottom - gap - h
+        };
+
+        var drawBox = new RectangleF(box.X, barTopY, box.Width, h);
 
         (containerBox ?? default).Contains(ref drawBox, out var contains);
-        if ((containerBox == null || contains) && 
-            !drawBox.Intersects(HoveredItem?.Element?.Tooltip?.GetClientRectCache ?? default))
-        {
-            var overlayColors = GetOverlayColors(item.PriceData.MinChaosValue);
-            Graphics.DrawBox(drawBox, backgroundColor ?? overlayColors.BackgroundColor);
-            var textPosition = new Vector2(drawBox.Center.X, drawBox.Center.Y - ImGui.GetTextLineHeight() / 2);
+        if (containerBox != null && !contains || drawBox.Intersects(HoveredItem?.Element?.Tooltip?.GetClientRectCache ?? default)) return;
+        var overlayColors = GetOverlayColors(item.PriceData.MinChaosValue);
+        Graphics.DrawBox(drawBox, backgroundColor ?? overlayColors.BackgroundColor);
+        var textPosition = new Vector2(drawBox.Center.X, drawBox.Center.Y - ImGui.GetTextLineHeight() / 2);
 
-            var itemValue = item.PriceData.MinChaosValue;
-            if (Settings.PriceOverlaySettings.ShowUnitValue)
-            {
-                itemValue /= item.CurrencyInfo.StackSize;
-                if (itemValue < Settings.PriceOverlaySettings.UnitValueHintThreshold) textColor = Color.Red;
-            }
-            
-            Graphics.DrawText(itemValue.FormatNumber(Settings.VisualPriceSettings.SignificantDigits.Value), textPosition,
-                textColor ?? overlayColors.TextColor, FontAlign.Center);
+        var itemValue = item.PriceData.MinChaosValue;
+        if (Settings.PriceOverlaySettings.ShowUnitValue)
+        {
+            itemValue /= item.CurrencyInfo.StackSize;
+            if (itemValue < Settings.PriceOverlaySettings.UnitValueHintThreshold) textColor = Color.Red;
         }
+
+        Graphics.DrawText(itemValue.FormatNumber(Settings.VisualPriceSettings.SignificantDigits.Value), textPosition, textColor ?? overlayColors.TextColor, FontAlign.Center);
     }
 
     private void PriceBoxOverItemHaggle(CustomItem item)

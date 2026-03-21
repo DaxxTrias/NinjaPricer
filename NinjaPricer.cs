@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -30,6 +30,7 @@ public partial class NinjaPricer : BaseSettingsPlugin<NinjaPricerSettings>
         _downloader.DataDirectory = Path.Join(DirectoryFullName, "poescoutdata");
         _downloader.Settings = Settings;
         _downloader.log = LogMessage;
+        Settings.StashValueSettings.InitializePriceOverlayStashTabs();
         NinjaDirectory = Path.Join(DirectoryFullName, "NinjaData");
         Directory.CreateDirectory(NinjaDirectory);
 
