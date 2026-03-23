@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using ExileCore2.Shared.Attributes;
 using ExileCore2.Shared.Enums;
@@ -8,6 +9,7 @@ using ExileCore2.Shared.Interfaces;
 using ExileCore2.Shared.Nodes;
 using ImGuiNET;
 using Newtonsoft.Json;
+using NinjaPricer.Enums;
 
 namespace NinjaPricer;
 
@@ -25,6 +27,7 @@ public class NinjaPricerSettings : ISettings
     public LeagueSpecificSettings LeagueSpecificSettings { get; set; } = new();
     public VisualPriceSettings VisualPriceSettings { get; set; } = new();
     public SoundNotificationSettings SoundNotificationSettings { get; set; } = new();
+    public ValuationDisablingSettings ValuationDisablingSettings { get; set; } = new();
     public ToggleNode Enable { get; set; } = new(true);
 }
 
@@ -249,6 +252,64 @@ public class StashValueSettings
 
     public bool IsOverlayEnabledFor(InventoryType? inventoryType) =>
         inventoryType != null && EffectivePriceOverlayEnabled(inventoryType.Value.ToString());
+}
+
+[Submenu(CollapsedByDefault = true)]
+public class ValuationDisablingSettings
+{
+    private static readonly Dictionary<string, bool> DefaultValuationDisabledByItemType = new(StringComparer.OrdinalIgnoreCase)
+    {
+    };
+
+    private static bool DefaultValuationDisabledFor(string typeName) =>
+        DefaultValuationDisabledByItemType.TryGetValue(typeName, out var on) && on;
+
+    public ValuationDisablingSettings()
+    {
+        ItemTypesValuationUi = new CustomNode
+        {
+            DrawDelegate = () =>
+            {
+                if (!ImGui.TreeNode("Item types"))
+                {
+                    return;
+                }
+
+                foreach (var type in Enum.GetValues(typeof(ItemTypes)).Cast<ItemTypes>().Where(t => t != ItemTypes.None))
+                {
+                    var name = type.ToString();
+                    var disabled = EffectiveValuationDisabled(name);
+                    if (ImGui.Checkbox($"##valuation_off_{name}", ref disabled))
+                    {
+                        UserTouchedValuationDisabledByItemType[name] = disabled;
+                    }
+
+                    ImGui.SameLine();
+                    ImGui.TextUnformatted(name);
+                }
+
+                ImGui.TreePop();
+            }
+        };
+    }
+
+    [JsonProperty("ValuationDisabledByItemType")]
+    public Dictionary<string, bool> UserTouchedValuationDisabledByItemType { get; set; } = [];
+
+    public void InitializeValuationDisabling()
+    {
+        UserTouchedValuationDisabledByItemType ??= [];
+    }
+
+    private bool EffectiveValuationDisabled(string typeName) =>
+        UserTouchedValuationDisabledByItemType != null && UserTouchedValuationDisabledByItemType.TryGetValue(typeName, out var o) ? o : DefaultValuationDisabledFor(typeName);
+
+    public bool IsValuationDisabled(ItemTypes type) =>
+        type != ItemTypes.None && EffectiveValuationDisabled(type.ToString());
+
+    [JsonIgnore]
+    [Menu(null, CollapsedByDefault = true)]
+    public CustomNode ItemTypesValuationUi { get; set; }
 }
 
 public class StashPriceOverlayLayout

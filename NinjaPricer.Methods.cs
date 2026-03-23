@@ -126,7 +126,7 @@ public partial class NinjaPricer
             {
                 item.PriceData.MinChaosValue = 0;
             }
-            else
+            else if (!Settings.ValuationDisablingSettings.IsValuationDisabled(item.ItemType))
             {
                 switch (item.ItemType) // easier to get data for each item type and handle logic based on that
                 {
