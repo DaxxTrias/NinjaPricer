@@ -580,7 +580,8 @@ public partial class NinjaPricer
     private void PriceBoxOverItem(CustomItem item, RectangleF? containerBox, Color? textColor = null, Color? backgroundColor = null, StashPriceOverlayLayout layout = null)
     {
         var itemValue = item.PriceData.MinChaosValue;
-        if (Settings.PriceOverlaySettings.ShoveAboveMinValueOnly && Settings.PriceOverlaySettings.MinValueForDisplay >= itemValue) return;
+
+        if (Settings.PriceOverlaySettings.ShowAboveMinValueOnly && Settings.PriceOverlaySettings.MinValueForDisplay >= itemValue) return;
 
         layout ??= new StashPriceOverlayLayout();
 
