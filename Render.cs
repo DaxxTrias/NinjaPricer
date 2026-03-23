@@ -236,13 +236,14 @@ public partial class NinjaPricer
             VisibleStashValue();
 
             var tabType = StashPanel.VisibleStash?.InvType;
+            var layout = Settings.StashValueSettings.GetPriceOverlayLayout(tabType);
             if (!Settings.PriceOverlaySettings.Show ||
                 Settings.PriceOverlaySettings.DoNotDrawWhileAnItemIsHovered && HoveredItem != null ||
-                !Settings.StashValueSettings.IsOverlayEnabledFor(tabType)) return;
+                !layout.Enabled) return;
 
             foreach (var customItem in ItemsToDrawList.Where(customItem => customItem.ItemType != ItemTypes.None))
             {
-                PriceBoxOverItem(customItem, null, null, null, Settings.StashValueSettings.GetPriceOverlayLayout(tabType));
+                PriceBoxOverItem(customItem, null, null, null, layout);
             }
         }
         else if (Settings.LeagueSpecificSettings.ShowRitualWindowPrices && GameController.IngameState.IngameUi.RitualWindow.IsVisible ||

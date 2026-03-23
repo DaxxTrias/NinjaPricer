@@ -30,8 +30,6 @@ public partial class NinjaPricer : BaseSettingsPlugin<NinjaPricerSettings>
         _downloader.DataDirectory = Path.Join(DirectoryFullName, "poescoutdata");
         _downloader.Settings = Settings;
         _downloader.log = LogMessage;
-        Settings.StashValueSettings.InitializePriceOverlayStashTabs();
-        Settings.ValuationDisablingSettings.InitializeValuationDisabling();
         NinjaDirectory = Path.Join(DirectoryFullName, "NinjaData");
         Directory.CreateDirectory(NinjaDirectory);
 
