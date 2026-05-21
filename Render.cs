@@ -22,6 +22,9 @@ namespace NinjaPricer;
 
 public partial class NinjaPricer
 {
+    private const int GroundItemUpdatePeriodMs = 150;
+    private const int SlowGroundItemUpdatePeriodMs = 500;
+
     public readonly Stopwatch StashUpdateTimer = Stopwatch.StartNew();
     public readonly Stopwatch InventoryUpdateTimer = Stopwatch.StartNew();
     public double StashTabValue { get; set; }
@@ -44,21 +47,32 @@ public partial class NinjaPricer
     private readonly CachedValue<List<ItemOnGround>> _slowGroundItems;
     private readonly CachedValue<List<ItemOnGround>> _groundItems;
     private readonly Dictionary<uint, bool> _soundPlayedTracker = new Dictionary<uint, bool>();
+    private List<ItemOnGround> _lastGroundItems = [];
 
     public NinjaPricer()
     {
-        _slowGroundItems = new TimeCache<List<ItemOnGround>>(GetItemsOnGroundSlow, 500);
-        _groundItems = new FrameCache<List<ItemOnGround>>(CacheUtils.RememberLastValue(GetItemsOnGround, new List<ItemOnGround>()));
+        _slowGroundItems = new TimeCache<List<ItemOnGround>>(GetItemsOnGroundSlow, SlowGroundItemUpdatePeriodMs);
+        _groundItems = new TimeCache<List<ItemOnGround>>(GetItemsOnGround, GroundItemUpdatePeriodMs);
     }
 
-    private List<ItemOnGround> GetItemsOnGround(List<ItemOnGround> previousValue)
+    private List<ItemOnGround> GetItemsOnGround()
     {
-        var prevDict = previousValue
-            .Where(x => x.Type == GroundItemProcessingType.WorldItem)
-            .DistinctBy(x => (x.Item.Element?.Address, x.Item.Entity?.Address))
-            .ToDictionary(x => (x.Item.Element?.Address, x.Item.Entity?.Address));
+        var prevDict = new Dictionary<(long LabelAddress, long EntityAddress), CustomItem>();
+        foreach (var previousItem in _lastGroundItems)
+        {
+            if (previousItem.Type != GroundItemProcessingType.WorldItem || previousItem.Item == null)
+                continue;
+
+            var key = (previousItem.Item.Element?.Address ?? 0, previousItem.Item.Entity?.Address ?? 0);
+            if (!prevDict.ContainsKey(key))
+            {
+                prevDict.Add(key, previousItem.Item);
+            }
+        }
+
         var labelsOnGround = GameController.IngameState.IngameUi.ItemsOnGroundLabelElement.VisibleGroundItemLabels;
-        var result = new List<ItemOnGround>();
+        var slowGroundItems = _slowGroundItems.Value;
+        var result = new List<ItemOnGround>(labelsOnGround.Count + slowGroundItems.Count);
         foreach (var description in labelsOnGround)
         {
             try
@@ -78,7 +92,8 @@ public partial class NinjaPricer
 
                 if (worldItem != null && worldItem.ItemEntity is { IsValid: true } groundItemEntity)
                 {
-                    var customItem = prevDict.GetValueOrDefault((description.Label?.Address, groundItemEntity.Address))?.Item;
+                    var key = (description.Label?.Address ?? 0, groundItemEntity.Address);
+                    var customItem = prevDict.GetValueOrDefault(key);
                     if (customItem == null)
                     {
                         customItem = new CustomItem(groundItemEntity, description.Label);
@@ -94,11 +109,35 @@ public partial class NinjaPricer
                 continue;
             }
         }
-        result.AddRange(_slowGroundItems.Value);
-        foreach (var id in _soundPlayedTracker.Keys.Except(result.Select(x => x.Item.EntityId)).ToList())
+        result.AddRange(slowGroundItems);
+        if (_soundPlayedTracker.Count != 0)
         {
-            _soundPlayedTracker.Remove(id);
+            var activeEntityIds = new HashSet<uint>();
+            foreach (var itemOnGround in result)
+            {
+                activeEntityIds.Add(itemOnGround.Item.EntityId);
+            }
+
+            List<uint>? idsToRemove = null;
+            foreach (var id in _soundPlayedTracker.Keys)
+            {
+                if (!activeEntityIds.Contains(id))
+                {
+                    idsToRemove ??= [];
+                    idsToRemove.Add(id);
+                }
+            }
+
+            if (idsToRemove != null)
+            {
+                foreach (var id in idsToRemove)
+                {
+                    _soundPlayedTracker.Remove(id);
+                }
+            }
         }
+
+        _lastGroundItems = result;
         return result;
     }
 
@@ -139,7 +178,16 @@ public partial class NinjaPricer
             }
         }
 
-        GetValue(result.Select(x => x.Item));
+        if (result.Count != 0)
+        {
+            var pricedItems = new List<CustomItem>(result.Count);
+            foreach (var itemOnGround in result)
+            {
+                pricedItems.Add(itemOnGround.Item);
+            }
+
+            GetValue(pricedItems);
+        }
 
         return result;
     }
@@ -767,6 +815,12 @@ public partial class NinjaPricer
     private void ProcessItemsOnGround()
     {
         if (!Settings.GroundItemSettings.PriceItemsOnGround && !Settings.UniqueIdentificationSettings.ShowRealUniqueNameOnGround && !Settings.GroundItemSettings.PriceHeistRewards) return;
+        if (!HasGroundLabelsToProcess())
+        {
+            ResetGroundItemCache();
+            return;
+        }
+
         //this window allows us to change the size of the text we draw to the background list
         //yeah, it's weird
         ImGui.Begin("lmao",
@@ -924,6 +978,33 @@ public partial class NinjaPricer
         }
         
         ImGui.End();
+    }
+
+    private bool HasGroundLabelsToProcess()
+    {
+        try
+        {
+            var labels = GameController.IngameState.IngameUi.ItemsOnGroundLabelElement;
+            return labels is { Address: not 0 } && labels.CountLabels > 0;
+        }
+        catch
+        {
+            // If the label root is in transition, keep the previous behavior and let the guarded processing path decide.
+            return true;
+        }
+    }
+
+    private void ResetGroundItemCache()
+    {
+        if (_lastGroundItems.Count != 0)
+        {
+            _lastGroundItems = [];
+        }
+
+        if (_soundPlayedTracker.Count != 0)
+        {
+            _soundPlayedTracker.Clear();
+        }
     }
 
     private bool TryGetArtifactPrice(CustomItem item, out double amount, out string artifactName)
