@@ -1,4 +1,5 @@
 using ExileCore2;
+using ExileCore2.PoEMemory;
 using ExileCore2.PoEMemory.Elements;
 using ExileCore2.PoEMemory.Elements.InventoryElements;
 using ExileCore2.Shared.Enums;
@@ -69,7 +70,7 @@ public partial class NinjaPricer
         try
         {
             var uiHover = GameController.Game.IngameState.UIHover;
-            if (uiHover.AsObject<HoverItemIcon>().ToolTipType != ToolTipType.ItemInChat)
+            if (uiHover.Address != 0 && uiHover.AsObject<HoverItemIcon>().ToolTipType != ToolTipType.ItemInChat)
             {
                 var inventoryItemIcon = uiHover.AsObject<NormalInventoryItem>();
                 var tooltip = inventoryItemIcon.Tooltip;
