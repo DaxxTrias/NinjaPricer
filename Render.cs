@@ -579,6 +579,9 @@ public partial class NinjaPricer
 
     private void PriceBoxOverItem(CustomItem item, RectangleF? containerBox, Color? textColor = null, Color? backgroundColor = null, StashPriceOverlayLayout layout = null)
     {
+        var itemValue = item.PriceData.MinChaosValue;
+        if (Settings.PriceOverlaySettings.ShoveAboveMinValueOnly && Settings.PriceOverlaySettings.MinValueForDisplay >= itemValue) return;
+
         layout ??= new StashPriceOverlayLayout();
 
         var box = item.Element.GetClientRect();
@@ -601,7 +604,6 @@ public partial class NinjaPricer
         Graphics.DrawBox(drawBox, backgroundColor ?? overlayColors.BackgroundColor);
         var textPosition = new Vector2(drawBox.Center.X, drawBox.Center.Y - ImGui.GetTextLineHeight() / 2);
 
-        var itemValue = item.PriceData.MinChaosValue;
         if (Settings.PriceOverlaySettings.ShowUnitValue)
         {
             itemValue /= item.CurrencyInfo.StackSize;

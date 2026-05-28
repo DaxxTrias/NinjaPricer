@@ -271,6 +271,10 @@ public class PriceOverlaySettings
     public ToggleNode ShowUnitValue { get; set; } = new(false);
     
     public RangeNode<float> UnitValueHintThreshold { get; set; } = new(0.9f, 0, 100);
+
+    public ToggleNode ShoveAboveMinValueOnly { get; set; } = new(true);
+
+    public RangeNode<float> MinValueForDisplay { get; set; } = new(1, 0, 15000);
 }
 
 [Submenu(CollapsedByDefault = true)]
