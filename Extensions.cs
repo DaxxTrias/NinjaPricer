@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using NinjaPricer.API.PoeNinja;
 
 namespace NinjaPricer;
@@ -9,7 +10,17 @@ public static class Extensions
     {
         if (double.IsNaN(number))
         {
-            return "NaN";
+            return "n/a";
+        }
+
+        if (double.IsPositiveInfinity(number))
+        {
+            return "inf";
+        }
+
+        if (double.IsNegativeInfinity(number))
+        {
+            return "-inf";
         }
 
         if (number == 0)
@@ -24,10 +35,28 @@ public static class Extensions
 
         if (Math.Abs(number) < maxInvertValue)
         {
-            return $"1/{Math.Round((decimal)(1 / number), 1):#.#}";
+            var inverted = 1 / number;
+            if (!double.IsFinite(inverted))
+            {
+                return "n/a";
+            }
+
+            if (Math.Abs(inverted) > (double)decimal.MaxValue)
+            {
+                return $"1/{inverted.ToString("0.#e+0", CultureInfo.InvariantCulture)}";
+            }
+
+            return $"1/{Math.Round((decimal)inverted, 1).ToString("#.#", CultureInfo.InvariantCulture)}";
         }
 
-        return Math.Round((decimal)number, significantDigits).ToString($"#,##0.{new string(forceDecimals ? '0' : '#', significantDigits)}");
+        significantDigits = Math.Clamp(significantDigits, 0, 28);
+        var format = $"#,##0.{new string(forceDecimals ? '0' : '#', significantDigits)}";
+        if (Math.Abs(number) > (double)decimal.MaxValue)
+        {
+            return number.ToString("0.##e+0", CultureInfo.InvariantCulture);
+        }
+
+        return Math.Round((decimal)number, significantDigits).ToString(format, CultureInfo.InvariantCulture);
     }
 
     public static bool IsChanceable(this object item)

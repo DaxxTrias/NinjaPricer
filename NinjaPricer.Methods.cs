@@ -47,6 +47,17 @@ public partial class NinjaPricer
     };
 
         private double DivinePrice => _downloader.DivineValue ?? 0;
+
+        private bool TryGetDivinePrice(out double divinePrice)
+        {
+            divinePrice = DivinePrice;
+            return double.IsFinite(divinePrice) && divinePrice > 0;
+        }
+
+        private static double NormalizePriceValue(double value)
+        {
+            return double.IsFinite(value) && value > 0 ? value : 0;
+        }
  
      private double ChaosPerExalt
      {
@@ -66,11 +77,12 @@ public partial class NinjaPricer
  
      private string FormatExWithChaosFallback(double exValue)
      {
+         exValue = NormalizePriceValue(exValue);
          var exText = exValue.FormatNumber(Settings.VisualPriceSettings.SignificantDigits.Value, 0);
          if (Settings.VisualPriceSettings.ShowChaosFallbackBelowOneEx && exValue > 0 && exValue < 1)
          {
              var chaosPerEx = ChaosPerExalt;
-             if (!double.IsNaN(chaosPerEx) && !double.IsInfinity(chaosPerEx))
+             if (double.IsFinite(chaosPerEx) && chaosPerEx > 0)
              {
                  var chaos = exValue * chaosPerEx;
                  var chaosText = chaos.FormatNumber(2, forceDecimals: true);
@@ -88,12 +100,25 @@ public partial class NinjaPricer
 
     private static List<CustomItem> FormatItems(IEnumerable<NormalInventoryItem> itemList)
     {
-        return itemList.Where(x => x?.Item?.IsValid == true).Select(inventoryItem => new CustomItem(inventoryItem)).ToList();
+        return itemList?.Where(x => x?.Item?.IsValid == true).Select(inventoryItem => new CustomItem(inventoryItem)).ToList() ?? [];
     }
 
     private static bool TryGetShardParent(string shardBaseName, out string shardParent)
     {
-        return ShardMapping.TryGetValue(shardBaseName, out shardParent);
+        if (string.IsNullOrEmpty(shardBaseName))
+        {
+            shardParent = string.Empty;
+            return false;
+        }
+
+        if (ShardMapping.TryGetValue(shardBaseName, out var mappedShardParent))
+        {
+            shardParent = mappedShardParent;
+            return true;
+        }
+
+        shardParent = string.Empty;
+        return false;
     }
 
     private void GetHoveredItem()
@@ -101,14 +126,15 @@ public partial class NinjaPricer
         try
         {
             var uiHover = GameController.Game.IngameState.UIHover;
-            if (uiHover.AsObject<HoverItemIcon>().ToolTipType != ToolTipType.ItemInChat)
+            var hoverItemIcon = uiHover.AsObject<HoverItemIcon>();
+            if (hoverItemIcon?.ToolTipType != ToolTipType.ItemInChat)
             {
                 var inventoryItemIcon = uiHover.AsObject<NormalInventoryItem>();
-                var tooltip = inventoryItemIcon.Tooltip;
-                var poeEntity = inventoryItemIcon.Item;
-                if (tooltip != null && poeEntity.Address != 0 && poeEntity.IsValid)
+                var tooltip = inventoryItemIcon?.Tooltip;
+                var poeEntity = inventoryItemIcon?.Item;
+                if (inventoryItemIcon != null && tooltip != null && poeEntity is { Address: not 0, IsValid: true })
                 {
-                    var item = inventoryItemIcon.Item;
+                    var item = poeEntity;
                     var baseItemType = GameController.Files.BaseItemTypes.Translate(item.Path);
                     if (baseItemType != null)
                     {
@@ -133,6 +159,11 @@ public partial class NinjaPricer
 
     private void GetValue(IEnumerable<CustomItem> items)
     {
+        if (items == null)
+        {
+            return;
+        }
+
         foreach (var customItem in items)
         {
             GetValue(customItem);
@@ -151,6 +182,16 @@ public partial class NinjaPricer
 
     private void GetValue(CustomItem item)
     {
+        if (item?.PriceData == null)
+        {
+            return;
+        }
+
+        item.BaseName ??= string.Empty;
+        item.UniqueName ??= string.Empty;
+        item.CurrencyInfo ??= new CustomItem.CurrencyData();
+        var uniqueNameCandidates = item.UniqueNameCandidates ?? [];
+
         try
         {
             if(item.BaseName.Contains("Rogue's Marker"))
@@ -362,7 +403,7 @@ public partial class NinjaPricer
                     //    break;
                     case ItemTypes.UniqueAccessory:
                         var uniqueAccessorySearch = CollectedData.Accessories.FindAll(x =>
-                            (x.name == item.UniqueName || item.UniqueNameCandidates.Contains(x.name)));
+                            (x.name == item.UniqueName || uniqueNameCandidates.Contains(x.name)));
                         if (uniqueAccessorySearch.Count == 1)
                         {
                             item.PriceData.MinChaosValue = uniqueAccessorySearch[0].currentPrice;
@@ -386,7 +427,7 @@ public partial class NinjaPricer
                     case ItemTypes.UniqueArmour:
                     {
                         var uniqueArmourSearchLinks = CollectedData.Armour
-                            .Where(x => x.name == item.UniqueName || item.UniqueNameCandidates.Contains(x.name))
+                            .Where(x => x.name == item.UniqueName || uniqueNameCandidates.Contains(x.name))
                             .ToList();
 
                         if (uniqueArmourSearchLinks.Count == 1)
@@ -461,7 +502,7 @@ public partial class NinjaPricer
                     case ItemTypes.UniqueWeapon:
                     {
                         var uniqueArmourSearchLinks = CollectedData.Weapons
-                            .Where(x => x.name == item.UniqueName || item.UniqueNameCandidates.Contains(x.name))
+                            .Where(x => x.name == item.UniqueName || uniqueNameCandidates.Contains(x.name))
                             .ToList();
                         if (uniqueArmourSearchLinks.Count == 1)
                         {
@@ -504,9 +545,20 @@ public partial class NinjaPricer
         }
         finally
         {
+            item.PriceData.MinChaosValue = NormalizePriceValue(item.PriceData.MinChaosValue);
+            item.PriceData.ChangeInLast7Days = double.IsFinite(item.PriceData.ChangeInLast7Days) ? item.PriceData.ChangeInLast7Days : 0;
+            item.PriceData.ItemBasePrices = item.PriceData.ItemBasePrices?
+                .Where(double.IsFinite)
+                .Where(x => x > 0)
+                .ToList() ?? [];
+
             if (item.PriceData.MaxChaosValue == 0)
             {
                 item.PriceData.MaxChaosValue = item.PriceData.MinChaosValue;
+            }
+            else
+            {
+                item.PriceData.MaxChaosValue = Math.Max(item.PriceData.MinChaosValue, NormalizePriceValue(item.PriceData.MaxChaosValue));
             }
         }
     }

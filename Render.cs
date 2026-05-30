@@ -459,21 +459,28 @@ public partial class NinjaPricer
     {
         if (!Settings.HoveredItemSettings.Show) return;
         if (HoveredItem == null || HoveredItem.ItemType == ItemTypes.None) return;
+        var priceData = HoveredItem.PriceData;
+        if (priceData == null) return;
+
+        var priceInChaos = NormalizePriceValue(priceData.MinChaosValue);
+        var maxPriceInChaos = Math.Max(priceInChaos, NormalizePriceValue(priceData.MaxChaosValue));
+        var changeInLast7Days = double.IsFinite(priceData.ChangeInLast7Days) ? priceData.ChangeInLast7Days : 0;
+        var stackSize = Math.Max(1, HoveredItem.CurrencyInfo?.StackSize ?? 1);
+        var hasDivinePrice = TryGetDivinePrice(out var divinePrice);
+        var priceInDivines = hasDivinePrice ? priceInChaos / divinePrice : 0;
+        var priceInDivinesText = priceInDivines.FormatNumber(2);
         var textSections = new List<string> { "" };
         void AddSection() => textSections.Add("");
         void AddText(string text) => textSections[^1] += text;
 
-        var changeText = $"Change in last 7 Days: {HoveredItem.PriceData.ChangeInLast7Days:+#;-#;0}%";
+        var changeText = $"Change in last 7 Days: {changeInLast7Days:+#;-#;0}%";
         var changeTextLength = changeText.Length - 1;
         var sectionBreak = $"\n{new string('-', changeTextLength)}\n";
-        if (Math.Abs(HoveredItem.PriceData.ChangeInLast7Days) > 0.5)
+        if (Math.Abs(changeInLast7Days) > 0.5)
         {
             AddText(changeText);
         }
 
-        var priceInChaos = HoveredItem.PriceData.MinChaosValue;
-        var priceInDivines = priceInChaos / DivinePrice;
-        var priceInDivinesText = priceInDivines.FormatNumber(2);
         var minPriceText = FormatExWithChaosFallback(priceInChaos);
         AddSection();
         switch (HoveredItem.ItemType)
@@ -493,37 +500,38 @@ public partial class NinjaPricer
             case ItemTypes.Talisman:
             case ItemTypes.Omen:
             case ItemTypes.Abyss:
-                if (priceInDivines >= 0.1)
+                if (hasDivinePrice && priceInDivines >= 0.1)
                 {
-                    var priceInDivinessPerOne = priceInDivines / HoveredItem.CurrencyInfo.StackSize;
+                    var priceInDivinessPerOne = priceInDivines / stackSize;
                     AddText(priceInDivinessPerOne >= 0.1
                         ? $"\nDivine: {priceInDivinesText}d ({priceInDivinessPerOne.FormatNumber(2)}d per one)"
                         : $"\nDivine: {priceInDivinesText}d");
                 }
-                AddText($"\nExalt: {minPriceText} ({((priceInChaos / HoveredItem.CurrencyInfo.StackSize)).FormatNumber(2, Settings.VisualPriceSettings.MaximalValueForFractionalDisplay)}ex per one)");
+                AddText($"\nExalt: {minPriceText} ({(priceInChaos / stackSize).FormatNumber(2, Settings.VisualPriceSettings.MaximalValueForFractionalDisplay)}ex per one)");
                 break;
             case ItemTypes.UniqueAccessory:
             case ItemTypes.UniqueArmour:
             case ItemTypes.UniqueFlask:
             case ItemTypes.UniqueJewel:
             case ItemTypes.UniqueWeapon:
-                if (HoveredItem.UniqueNameCandidates.Any())
+                var uniqueNameCandidates = HoveredItem.UniqueNameCandidates ?? [];
+                if (uniqueNameCandidates.Any())
                 {
-                    AddText(HoveredItem.UniqueNameCandidates.Count == 1
-                        ? $"\nIdentified as: {HoveredItem.UniqueNameCandidates.First()}"
-                        : $"\nIdentified as one of:\n{string.Join('\n', HoveredItem.UniqueNameCandidates.Select(x => $"{x}"))}");
+                    AddText(uniqueNameCandidates.Count == 1
+                        ? $"\nIdentified as: {uniqueNameCandidates.First()}"
+                        : $"\nIdentified as one of:\n{string.Join('\n', uniqueNameCandidates.Select(x => $"{x}"))}");
                 }
 
                 AddSection();
-                if (priceInDivines >= 0.1)
+                if (hasDivinePrice && priceInDivines >= 0.1)
                 {
-                    var maxDivinePriceText = (HoveredItem.PriceData.MaxChaosValue / DivinePrice).FormatNumber(2);
+                    var maxDivinePriceText = (maxPriceInChaos / divinePrice).FormatNumber(2);
                     AddText(priceInDivinesText != maxDivinePriceText 
                         ? $"\nDivine: {priceInDivinesText}d - {maxDivinePriceText}d" 
                         : $"\nDivine: {priceInDivinesText}d");
                 }
 
-                var maxPriceText = FormatExWithChaosFallback(HoveredItem.PriceData.MaxChaosValue);
+                var maxPriceText = FormatExWithChaosFallback(maxPriceInChaos);
                 AddText(minPriceText != maxPriceText 
                     ? $"\nExalt: {minPriceText} - {maxPriceText}" 
                     : $"\nExalt: {minPriceText}");
@@ -532,7 +540,7 @@ public partial class NinjaPricer
             case ItemTypes.Map:
             case ItemTypes.SkillGem:
             case ItemTypes.UncutGem:
-                if (priceInDivines >= 0.1)
+                if (hasDivinePrice && priceInDivines >= 0.1)
                 {
                     AddText($"\nDivine: {priceInDivinesText}d");
                 }
@@ -547,12 +555,14 @@ public partial class NinjaPricer
             AddText($"\nUniqueName: {HoveredItem.UniqueName}"
                     + $"\nBaseName: {HoveredItem.BaseName}"
                     + $"\nItemType: {HoveredItem.ItemType}"
-                    + $"\nDetailsId: {HoveredItem.PriceData.DetailsId}");
+                    + $"\nDetailsId: {priceData.DetailsId}");
         } 
                 
         if (Settings.LeagueSpecificSettings.ShowArtifactChaosPrices)
         {
-            if (TryGetArtifactPrice(HoveredItem, out var amount, out var artifactName))
+            if (TryGetArtifactPrice(HoveredItem, out var amount, out var artifactName) &&
+                double.IsFinite(amount) &&
+                amount > 0)
             {
                 AddSection();
                 AddText($"\nArtifact price: ({(priceInChaos / amount * 100).FormatNumber(2)}ex per 100 {artifactName})");
@@ -625,9 +635,12 @@ public partial class NinjaPricer
     private void DrawWorthWidget(double chaosValue, Vector2 pos, int significantDigits, Color textColor, bool drawBackground, List<CustomItem> topValueItems) => DrawWorthWidget("", false, chaosValue, pos, significantDigits, textColor, drawBackground, topValueItems);
     private void DrawWorthWidget(string initialString, bool indent, double chaosValue, Vector2 pos, int significantDigits, Color textColor, bool drawBackground, List<CustomItem> topValueItems)
     {
-        var text = $"{initialString}{(indent ? "\t" : "")}Exalt: {chaosValue.FormatNumber(significantDigits)}" + (DivinePrice != null
-            ? $"\n{(indent ? "\t" : "")}Divine: {(chaosValue / DivinePrice).FormatNumber(significantDigits)}"
-            : "");
+        var text = $"{initialString}{(indent ? "\t" : "")}Exalt: {chaosValue.FormatNumber(significantDigits)}";
+        if (TryGetDivinePrice(out var divinePrice))
+        {
+            text += $"\n{(indent ? "\t" : "")}Divine: {(chaosValue / divinePrice).FormatNumber(significantDigits)}";
+        }
+
         if (topValueItems.Count > 0)
         {
             var maxChaosValueLength = topValueItems.Max(x => x.PriceData.MinChaosValue.FormatNumber(2, forceDecimals: true).Length);
