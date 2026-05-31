@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -8,8 +8,9 @@ using ExileCore2;
 using ExileCore2.PoEMemory.MemoryObjects;
 using ExileCore2.PoEMemory.Models;
 using Newtonsoft.Json;
-using NinjaPricer.API.Poe2Scout;
-using CollectiveApiData = NinjaPricer.API.Poe2Scout.CollectiveApiData;
+using NinjaPricer.API.PoeNinja;
+using NinjaPricer.API.PoeNinja.Models;
+using CollectiveApiData = NinjaPricer.API.PoeNinja.CollectiveApiData;
 
 namespace NinjaPricer;
 
@@ -152,7 +153,11 @@ public partial class NinjaPricer : BaseSettingsPlugin<NinjaPricerSettings>
 
         mapping ??= GetEmbeddedUniqueArtMapping();
         mapping ??= [];
-        return mapping.ToDictionary(x => x.Key, x => x.Value.Select(str => str.Replace('’', '\'')).ToList());
+        return mapping.ToDictionary(x => x.Key, x =>
+            x.Value.Select(str => str.Replace('’', '\''))
+            .Except(Settings.UniqueIdentificationSettings.ExcludedUniques.Content.Select(c => c.Value), 
+                StringComparer.InvariantCultureIgnoreCase)
+            .ToList());
     }
 
     private Dictionary<string, List<string>> GetEmbeddedUniqueArtMapping()
@@ -209,16 +214,16 @@ public partial class NinjaPricer : BaseSettingsPlugin<NinjaPricerSettings>
             leagueList.Add(playerLeague);
         }
 
-        //try
-        //{
-        //    var leagueListFromUrl = Utils.DownloadFromUrl("https://poe.ninja/api/data/getindexstate").Result;
-        //    var leagueData = JsonConvert.DeserializeObject<NinjaLeagueListRootObject>(leagueListFromUrl);
-        //    leagueList.UnionWith(leagueData.economyLeagues.Where(league => league.indexed).Select(league => league.name));
-        //}
-        //catch (Exception ex)
-        //{
-        //    LogError($"Failed to download the league list: {ex}");
-        //}
+        try
+        {
+            var leagueListFromUrl = Utils.DownloadFromUrl("https://poe.ninja/poe2/api/data/index-state").Result;
+            var leagueData = JsonConvert.DeserializeObject<LeagueRoot>(leagueListFromUrl);
+            leagueList.UnionWith(leagueData.economyLeagues.Where(league => league.indexed).Select(league => league.name));
+        }
+        catch (Exception ex)
+        {
+            LogError($"Failed to download the league list: {ex}");
+        }
 
         leagueList.Add("Standard");
         leagueList.Add("Hardcore");

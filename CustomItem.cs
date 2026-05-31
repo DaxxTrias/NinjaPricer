@@ -214,6 +214,7 @@ public class CustomItem
             ClassName != "Incubator" &&
             !BaseName.EndsWith(" Catalyst") &&
             BaseName != "Valdo's Puzzle Box" &&
+            BaseName != "Breach Splinter" &&
             !Path.Contains("Metadata/Items/Currency/Distilled", StringComparison.Ordinal) &&
             !Path.Contains("Metadata/Items/Currency/Abyssal", StringComparison.Ordinal))
         {
@@ -227,7 +228,7 @@ public class CustomItem
         {
             ItemType = ItemTypes.Abyss;
         }
-        else if (BaseName.EndsWith(" Catalyst"))
+        else if (BaseName.EndsWith(" Catalyst") || BaseName== "Breach Splinter")
         {
             ItemType = ItemTypes.Catalyst;
         }

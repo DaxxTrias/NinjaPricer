@@ -380,59 +380,106 @@ public partial class NinjaPricer
         ProcessTradeWindow();
         ProcessHoveredItem();
         VisibleInventoryValue();
+        ProcessExchangeCurrencyPicker();
 
         if (StashPanel.IsVisible)
         {
             VisibleStashValue();
 
-            InventoryType? tabTypeForDraw = null;
+            InventoryType? tabType = null;
             try
             {
-                tabTypeForDraw = StashPanel.VisibleStash?.InvType;
+                tabType = StashPanel.VisibleStash?.InvType;
             }
             catch
             {
                 // VisibleStash can throw when internal collections have null entries
-                tabTypeForDraw = null;
+                tabType = null;
             }
 
-            if (Settings.PriceOverlaySettings.Show &&
-                (!Settings.PriceOverlaySettings.DoNotDrawWhileAnItemIsHovered || HoveredItem == null))
-            {
-                foreach (var customItem in ItemsToDrawList)
-                {
-                    if (customItem.ItemType == ItemTypes.None) continue;
+            var layout = Settings.StashValueSettings.GetPriceOverlayLayout(tabType);
+            if (!Settings.PriceOverlaySettings.Show ||
+                Settings.PriceOverlaySettings.DoNotDrawWhileAnItemIsHovered && HoveredItem != null ||
+                !layout.Enabled) return;
 
-                    switch (tabTypeForDraw)
-                    {
-                        case InventoryType.CurrencyStash:
-                        case InventoryType.FragmentStash:
-                        case InventoryType.DelveStash:
-                        case InventoryType.DeliriumStash:
-                        case InventoryType.UltimatumStash:
-                        case InventoryType.BlightStash:
-                            PriceBoxOverItem(customItem, null, Settings.VisualPriceSettings.FontColor);
-                            break;
-                        case InventoryType.SocketableStash:
-                        case InventoryType.EssenceStash:
-                            if (Settings.PriceOverlaySettings.ShowOnDenseWindows)
-                                PriceBoxOverItem(customItem, null, Settings.VisualPriceSettings.FontColor);
-                            break;
-                    }
-                }
+            foreach (var customItem in ItemsToDrawList)
+            {
+                if (customItem == null || customItem.ItemType == ItemTypes.None) continue;
+                PriceBoxOverItem(customItem, null, null, null, layout);
             }
         }
         else if (Settings.LeagueSpecificSettings.ShowRitualWindowPrices && GameController.IngameState.IngameUi.RitualWindow.IsVisible ||
                  Settings.LeagueSpecificSettings.ShowPurchaseWindowPrices && (GameController.IngameState.IngameUi.PurchaseWindow.IsVisible ||
                                                                               GameController.IngameState.IngameUi.PurchaseWindowHideout.IsVisible))
         {
-            if (Settings.PriceOverlaySettings.Show &&
-                (!Settings.PriceOverlaySettings.DoNotDrawWhileAnItemIsHovered || HoveredItem == null))
+            if (!Settings.PriceOverlaySettings.Show || Settings.PriceOverlaySettings.DoNotDrawWhileAnItemIsHovered && HoveredItem != null) return;
+            foreach (var customItem in ItemsToDrawList.Where(customItem => customItem.ItemType != ItemTypes.None))
             {
-                foreach (var customItem in ItemsToDrawList)
+                DrawItemPriceInline(customItem);
+            }
+        }
+    }
+
+    private void ProcessExchangeCurrencyPicker()
+    {
+        if (GameController.IngameState.IngameUi.CurrencyExchangePanel?.CurrencyPicker is { IsValid: true, IsVisible: true } picker)
+        {
+            var pickerRect = picker.OptionContainer.GetClientRectCache;
+            var anyIntersect = false;
+            Element tooltip = null;
+            if (GameController.Game.IngameState.UIHover is { Address: not 0, IsValid: true } hover &&
+                hover.Tooltip is { IsValid: true, IsVisible: true } foundTooltip)
+            {
+                tooltip = foundTooltip;
+            }
+
+            foreach (var currencyOption in picker.Options)
+            {
+                var optionRect = currencyOption.GetClientRectCache;
+                if (pickerRect.Contains(optionRect.TopLeft))
                 {
-                    if (customItem.ItemType == ItemTypes.None) continue;
-                    DrawItemPriceInline(customItem);
+                    anyIntersect = true;
+                    if (currencyOption.ItemType is { } itemType)
+                    {
+                        var item = new CustomItem(itemType);
+                        GetValue(item);
+                        var topRight = optionRect.TopRight;
+                        var bottomRight = optionRect.BottomRight;
+                        var typePrice = item.PriceData.MinChaosValue;
+                        {
+                            var text = typePrice.FormatNumber(Settings.VisualPriceSettings.SignificantDigits.Value);
+                            var textSize = Graphics.MeasureText(text);
+                            var textRect = new RectangleF(topRight.X - textSize.X, topRight.Y, textSize.X, textSize.Y);
+                            if ((HoveredItemTooltipRect?.Intersects(textRect) ?? false) ||
+                                (tooltip?.GetClientRectCache.Intersects(textRect) ?? false))
+                            {
+                                continue;
+                            }
+
+                            Graphics.DrawTextWithBackground(text, topRight, Settings.VisualPriceSettings.FontColor, FontAlign.Right, Color.Black);
+                        }
+
+                        if (currencyOption.Owned is > 0 and var owned)
+                        {
+                            var totalOwned = typePrice * owned;
+                            var text2 = $"Owned: {totalOwned.FormatNumber(Settings.VisualPriceSettings.SignificantDigits.Value)}";
+                            var textSize2 = Graphics.MeasureText(text2);
+                            var textRect2 = new RectangleF(bottomRight.X - textSize2.X, bottomRight.Y - textSize2.Y, textSize2.X, textSize2.Y);
+                            if ((HoveredItemTooltipRect?.Intersects(textRect2) ?? false) ||
+                                (tooltip?.GetClientRectCache.Intersects(textRect2) ?? false))
+                            {
+                                continue;
+                            }
+                            
+                            Graphics.DrawTextWithBackground(text2, textRect2.TopLeft, totalOwned >= Settings.VisualPriceSettings.ValuableColorThreshold
+                                ? Settings.VisualPriceSettings.ValuableColor
+                                : Settings.VisualPriceSettings.FontColor, Color.Black);
+                        }
+                    }
+                }
+                else if (anyIntersect)
+                {
+                    break;
                 }
             }
         }
@@ -448,11 +495,11 @@ public partial class NinjaPricer
             return;
         }
 
+        var (textColor, backgroundColor) = GetOverlayColors(customItem.PriceData.MinChaosValue);
+        var textCenter = new Vector2(topRight.X - textSize.X / 2, topRight.Y);
         Graphics.DrawTextWithBackground(text,
-            topRight,
-            customItem.PriceData.MinChaosValue >= Settings.VisualPriceSettings.ValuableColorThreshold
-                ? Settings.VisualPriceSettings.ValuableColor
-                : Settings.VisualPriceSettings.FontColor, FontAlign.Right, Color.Black);
+            textCenter,
+            textColor, FontAlign.Center, backgroundColor);
     }
 
     private void ProcessHoveredItem()
@@ -573,14 +620,20 @@ public partial class NinjaPricer
         if (!string.IsNullOrWhiteSpace(tooltipText))
         {
             ImGui.BeginTooltip();
-            var valuable = priceInChaos >= Settings.VisualPriceSettings.ValuableColorThreshold.Value;
-            if (valuable)
+            var hoverTextColor = priceInChaos >= Settings.VisualPriceSettings.ExtraValuableColorThreshold.Value
+                ? Settings.VisualPriceSettings.ExtraValuableColor
+                : priceInChaos >= Settings.VisualPriceSettings.ValuableColorThreshold.Value
+                    ? Settings.VisualPriceSettings.ValuableColor
+                    : priceInChaos >= Settings.VisualPriceSettings.SemiValuableColorThreshold.Value
+                        ? Settings.VisualPriceSettings.SemiValuableColor
+                        : null;
+            if (hoverTextColor != null)
             {
-                ImGui.PushStyleColor(ImGuiCol.Text, Settings.VisualPriceSettings.ValuableColor.Value.ToImgui());
+                ImGui.PushStyleColor(ImGuiCol.Text, hoverTextColor.Value.ToImgui());
             }
 
             ImGui.TextUnformatted(tooltipText);
-            if (valuable)
+            if (hoverTextColor != null)
             {
                 ImGui.PopStyleColor();
             }
@@ -620,7 +673,7 @@ public partial class NinjaPricer
     {
         return items
             .Where(x => x.PriceData.MinChaosValue != 0)
-            .GroupBy(x => (x.PriceData.DetailsId, x.BaseName, x.UniqueName, x.ItemType, x.CapturedMonsterName))
+            .GroupBy(x => (x.PriceData.DetailsId, x.BaseName, x.UniqueName, x.ItemType))
             .Select(group => new CustomItem
             {
                 PriceData = { MinChaosValue = group.Sum(i => i.PriceData.MinChaosValue) },
@@ -679,20 +732,62 @@ public partial class NinjaPricer
         }
     }
 
-    private void PriceBoxOverItem(CustomItem item, RectangleF? containerBox, Color textColor)
+    private (Color TextColor, Color BackgroundColor) GetOverlayColors(double chaosValue)
     {
+        if (chaosValue >= Settings.VisualPriceSettings.ExtraValuableColorThreshold.Value)
+        {
+            return (Settings.VisualPriceSettings.ExtraValuableColor, Settings.VisualPriceSettings.ExtraValuableBackgroundColor);
+        }
+
+        if (chaosValue >= Settings.VisualPriceSettings.ValuableColorThreshold.Value)
+        {
+            return (Settings.VisualPriceSettings.ValuableColor, Settings.VisualPriceSettings.BackgroundColor);
+        }
+
+        if (chaosValue >= Settings.VisualPriceSettings.SemiValuableColorThreshold.Value)
+        {
+            return (Settings.VisualPriceSettings.SemiValuableColor, Settings.VisualPriceSettings.BackgroundColor);
+        }
+
+        return (Settings.VisualPriceSettings.FontColor, Settings.VisualPriceSettings.BackgroundColor);
+    }
+
+    private void PriceBoxOverItem(CustomItem item, RectangleF? containerBox, Color? textColor = null, Color? backgroundColor = null, StashPriceOverlayLayout layout = null)
+    {
+        var itemValue = item.PriceData.MinChaosValue;
+
+        if (Settings.PriceOverlaySettings.ShowAboveMinValueOnly && Settings.PriceOverlaySettings.MinValueForDisplay >= itemValue) return;
+
+        layout ??= new StashPriceOverlayLayout();
+
         var box = item.Element.GetClientRect();
-        var drawBox = new RectangleF(box.X, box.Y - 2, box.Width, -Settings.PriceOverlaySettings.BoxHeight);
+        var h = Math.Abs(Settings.PriceOverlaySettings.BoxHeight.Value);
+
+        const float gap = 2f;
+        var barTopY = (layout.Vertical, layout.Edge) switch
+        {
+            (PriceOverlayVertical.Top, PriceOverlayEdge.Outside) => box.Top - gap - h,
+            (PriceOverlayVertical.Top, PriceOverlayEdge.Inside) => box.Top + gap,
+            (PriceOverlayVertical.Bottom, PriceOverlayEdge.Outside) => box.Bottom + gap,
+            (PriceOverlayVertical.Bottom, PriceOverlayEdge.Inside) => box.Bottom - gap - h,
+            _ => throw new ArgumentOutOfRangeException(nameof(layout), $"{layout.Vertical}, {layout.Edge}", "Unexpected price overlay layout.")
+        };
+
+        var drawBox = new RectangleF(box.X, barTopY, box.Width, h);
 
         (containerBox ?? default).Contains(ref drawBox, out var contains);
-        if ((containerBox == null || contains) && 
-            !drawBox.Intersects(HoveredItem?.Element?.Tooltip?.GetClientRectCache ?? default))
+        if (containerBox != null && !contains || drawBox.Intersects(HoveredItem?.Element?.Tooltip?.GetClientRectCache ?? default)) return;
+        var overlayColors = GetOverlayColors(item.PriceData.MinChaosValue);
+        Graphics.DrawBox(drawBox, backgroundColor ?? overlayColors.BackgroundColor);
+        var textPosition = new Vector2(drawBox.Center.X, drawBox.Center.Y - ImGui.GetTextLineHeight() / 2);
+
+        if (Settings.PriceOverlaySettings.ShowUnitValue)
         {
-            Graphics.DrawBox(drawBox, Settings.VisualPriceSettings.BackgroundColor);
-            var textPosition = new Vector2(drawBox.Center.X, drawBox.Center.Y - ImGui.GetTextLineHeight() / 2);
-            Graphics.DrawText(item.PriceData.MinChaosValue.FormatNumber(Settings.VisualPriceSettings.SignificantDigits.Value), textPosition,
-                textColor, FontAlign.Center);
+            itemValue /= item.CurrencyInfo.StackSize;
+            if (itemValue < Settings.PriceOverlaySettings.UnitValueHintThreshold) textColor = Color.Red;
         }
+
+        Graphics.DrawText(itemValue.FormatNumber(Settings.VisualPriceSettings.SignificantDigits.Value), textPosition, textColor ?? overlayColors.TextColor, FontAlign.Center);
     }
 
     private void PriceBoxOverItemHaggle(CustomItem item)
@@ -893,7 +988,7 @@ public partial class NinjaPricer
 
                     if (!tooltipRect.Intersects(box) && !leftPanelRect.Intersects(box) && !rightPanelRect.Intersects(box))
                     {
-                        var isValuable = item.PriceData.MaxChaosValue >= Settings.VisualPriceSettings.ValuableColorThreshold;
+                        var isValuable = item.PriceData.MaxChaosValue >= Settings.VisualPriceSettings.ValuableColorThreshold.Value;
 
                         if (Settings.GroundItemSettings.PriceItemsOnGround &&
                             (Settings.GroundItemSettings.OnlyPriceItemsAboveThreshold

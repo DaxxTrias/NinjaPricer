@@ -1,11 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using ExileCore2.Shared.Attributes;
+using ExileCore2.Shared.Enums;
 using ExileCore2.Shared.Interfaces;
 using ExileCore2.Shared.Nodes;
 using ImGuiNET;
 using Newtonsoft.Json;
+using NinjaPricer.Enums;
 
 namespace NinjaPricer;
 
@@ -23,6 +27,7 @@ public class NinjaPricerSettings : ISettings
     public LeagueSpecificSettings LeagueSpecificSettings { get; set; } = new();
     public VisualPriceSettings VisualPriceSettings { get; set; } = new();
     public SoundNotificationSettings SoundNotificationSettings { get; set; } = new();
+    public ValuationDisablingSettings ValuationDisablingSettings { get; set; } = new();
     public ToggleNode Enable { get; set; } = new(true);
 }
 
@@ -127,11 +132,65 @@ public class UniqueIdentificationSettings
     public ColorNode UniqueItemNameBackgroundColor { get; set; } = new(Color.FromArgb(175, 96, 37));
     public ColorNode ValuableUniqueItemNameTextColor { get; set; } = new(Color.FromArgb(175, 96, 37));
     public ColorNode ValuableUniqueItemNameBackgroundColor { get; set; } = new(Color.White);
+    public ContentNode<TextNode> ExcludedUniques { get; set; } = new ContentNode<TextNode> { EnableControls = true, UseFlatItems = true, ItemFactory = () => new TextNode("") };
 }
 
 [Submenu(CollapsedByDefault = true)]
 public class StashValueSettings
 {
+    private static readonly string[] VerticalLabels = ["Top", "Bottom"];
+    private static readonly string[] EdgeLabels = ["Outside", "Inside"];
+
+    public StashValueSettings()
+    {
+        PriceOverlayStashTabsUi = new CustomNode
+        {
+            DrawDelegate = () =>
+            {
+                if (!ImGui.TreeNode("Stash Tab Overlay Types"))
+                {
+                    return;
+                }
+
+                foreach (var typeName in Enum.GetNames<InventoryType>())
+                {
+                    var layout = EffectivePriceOverlayLayout(typeName);
+                    var enabled = layout.Enabled;
+                    if (ImGui.Checkbox($"##stash_overlay_{typeName}", ref enabled))
+                    {
+                        layout.Enabled = enabled;
+                        StashTabPriceOverlayPerType[typeName] = layout;
+                    }
+
+                    ImGui.SameLine();
+
+                    var v = (int)layout.Vertical;
+                    ImGui.SetNextItemWidth(90);
+                    if (ImGui.Combo($"##stash_overlay_v_{typeName}", ref v, VerticalLabels, VerticalLabels.Length))
+                    {
+                        layout.Vertical = (PriceOverlayVertical)v;
+                        StashTabPriceOverlayPerType[typeName] = layout;
+                    }
+
+                    ImGui.SameLine();
+                    var e = (int)layout.Edge;
+                    ImGui.SetNextItemWidth(90);
+                    if (ImGui.Combo($"##stash_overlay_e_{typeName}", ref e, EdgeLabels, EdgeLabels.Length))
+                    {
+                        layout.Edge = (PriceOverlayEdge)e;
+                        StashTabPriceOverlayPerType[typeName] = layout;
+                    }
+
+                    ImGui.SameLine();
+                    ImGui.TextUnformatted(typeName);
+                }
+
+                ImGui.TreePop();
+            }
+        };
+    }
+
+
     [Menu(null, "Calculate value for the current visible stash tab")]
     public ToggleNode Show { get; set; } = new(true);
 
@@ -143,6 +202,104 @@ public class StashValueSettings
 
     public RangeNode<int> TopValuedItemCount { get; set; } = new(3, 0, 10);
     public ToggleNode EnableBackground { get; set; } = new(true);
+    public ToggleNode IgnoreChatPanel { get; set; } = new(false);
+    public Dictionary<string, StashPriceOverlayLayout> StashTabPriceOverlayPerType { get; set; } = [];
+
+    private StashPriceOverlayLayout GetDefaultLayout(string type)
+    {
+        if (type is nameof(InventoryType.BlightStash)
+            or nameof(InventoryType.CurrencyStash)
+            or nameof(InventoryType.FragmentStash)
+            or nameof(InventoryType.DelveStash)
+            or nameof(InventoryType.DeliriumStash)
+            or nameof(InventoryType.UltimatumStash))
+        {
+            return new StashPriceOverlayLayout { Vertical = PriceOverlayVertical.Top, Edge = PriceOverlayEdge.Outside };
+        }
+
+        return new StashPriceOverlayLayout { Vertical = PriceOverlayVertical.Bottom, Edge = PriceOverlayEdge.Inside };
+    }
+
+    private StashPriceOverlayLayout EffectivePriceOverlayLayout(string typeName)
+    {
+        return StashTabPriceOverlayPerType.TryGetValue(typeName, out var layout) && layout != null ? layout : GetDefaultLayout(typeName);
+    }
+
+    public StashPriceOverlayLayout GetPriceOverlayLayout(InventoryType? inventoryType)
+    {
+        if (inventoryType == null)
+        {
+            return GetDefaultLayout(null);
+        }
+
+        var key = inventoryType.Value.ToString();
+        return EffectivePriceOverlayLayout(key);
+    }
+
+    [JsonIgnore]
+    [Menu(null, CollapsedByDefault = true)]
+    public CustomNode PriceOverlayStashTabsUi { get; set; }
+
+}
+
+[Submenu(CollapsedByDefault = true)]
+public class ValuationDisablingSettings
+{
+    private static readonly Dictionary<string, bool> DefaultValuationDisabledByItemType = new(StringComparer.OrdinalIgnoreCase)
+    {
+    };
+
+    private static bool DefaultValuationDisabledFor(string typeName) =>
+        DefaultValuationDisabledByItemType.TryGetValue(typeName, out var on) && on;
+
+    public ValuationDisablingSettings()
+    {
+        ItemTypesValuationUi = new CustomNode
+        {
+            DrawDelegate = () =>
+            {
+                if (!ImGui.TreeNode("Item types"))
+                {
+                    return;
+                }
+
+                foreach (var type in Enum.GetValues(typeof(ItemTypes)).Cast<ItemTypes>().Where(t => t != ItemTypes.None))
+                {
+                    var name = type.ToString();
+                    var disabled = EffectiveValuationDisabled(name);
+                    if (ImGui.Checkbox($"##valuation_off_{name}", ref disabled))
+                    {
+                        UserTouchedValuationDisabledByItemType[name] = disabled;
+                    }
+
+                    ImGui.SameLine();
+                    ImGui.TextUnformatted(name);
+                }
+
+                ImGui.TreePop();
+            }
+        };
+    }
+
+    [JsonProperty("ValuationDisabledByItemType")]
+    public Dictionary<string, bool> UserTouchedValuationDisabledByItemType { get; set; } = [];
+
+    private bool EffectiveValuationDisabled(string typeName) =>
+        UserTouchedValuationDisabledByItemType != null && UserTouchedValuationDisabledByItemType.TryGetValue(typeName, out var o) ? o : DefaultValuationDisabledFor(typeName);
+
+    public bool IsValuationDisabled(ItemTypes type) =>
+        type != ItemTypes.None && EffectiveValuationDisabled(type.ToString());
+
+    [JsonIgnore]
+    [Menu(null, CollapsedByDefault = true)]
+    public CustomNode ItemTypesValuationUi { get; set; }
+}
+
+public class StashPriceOverlayLayout
+{
+    public bool Enabled { get; set; } = true;
+    public PriceOverlayVertical Vertical { get; set; } = PriceOverlayVertical.Top;
+    public PriceOverlayEdge Edge { get; set; } = PriceOverlayEdge.Outside;
 }
 
 [Submenu(CollapsedByDefault = true)]
@@ -154,7 +311,14 @@ public class PriceOverlaySettings
     public ToggleNode DoNotDrawWhileAnItemIsHovered { get; set; } = new(false);
 
     public RangeNode<int> BoxHeight { get; set; } = new(15, 0, 100);
-    public ToggleNode ShowOnDenseWindows { get; set; } = new(true);
+    
+    public ToggleNode ShowUnitValue { get; set; } = new(false);
+    
+    public RangeNode<float> UnitValueHintThreshold { get; set; } = new(0.9f, 0, 100);
+
+    public ToggleNode ShowAboveMinValueOnly { get; set; } = new(false);
+
+    public RangeNode<float> MinValueForDisplay { get; set; } = new(1, 0, 15000);
 }
 
 [Submenu(CollapsedByDefault = true)]
@@ -163,8 +327,13 @@ public class VisualPriceSettings
     public RangeNode<int> SignificantDigits { get; set; } = new(2, 0, 2);
     public ColorNode FontColor { get; set; } = Color.FromArgb(216, 216, 216);
     public ColorNode BackgroundColor { get; set; } = Color.FromArgb(0, 0, 0);
+    public RangeNode<int> SemiValuableColorThreshold { get; set; } = new(20, 0, 100000);
+    public ColorNode SemiValuableColor { get; set; } = Color.FromArgb(0, 240, 56);
     public RangeNode<int> ValuableColorThreshold { get; set; } = new(50, 0, 100000);
-    public ColorNode ValuableColor { get; set; } = new(Color.Violet);
+    public ColorNode ValuableColor { get; set; } = Color.FromArgb(238, 130, 145);
+    public RangeNode<int> ExtraValuableColorThreshold { get; set; } = new(500, 0, 100000);
+    public ColorNode ExtraValuableColor { get; set; } = Color.FromArgb(255, 166, 0);
+    public ColorNode ExtraValuableBackgroundColor { get; set; } = Color.FromArgb(89, 0, 255);
 
     [Menu(null, "Set to 0 to disable")]
     public RangeNode<float> MaximalValueForFractionalDisplay { get; set; } = new(0.2f, 0, 1);
@@ -197,4 +366,16 @@ public class SoundNotificationSettings
     public RangeNode<float> Volume { get; set; } = new(1, 0, 2);
     public RangeNode<int> ValueThreshold { get; set; } = new(50, 0, 100000);
     public ToggleNode PlayCustomSoundsIfBelowThreshold { get; set; } = new ToggleNode(true);
+}
+
+public enum PriceOverlayVertical
+{
+    Top,
+    Bottom
+}
+
+public enum PriceOverlayEdge
+{
+    Outside,
+    Inside
 }
