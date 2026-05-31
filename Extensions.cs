@@ -1,5 +1,4 @@
 using System;
-using NinjaPricer.API.PoeNinja;
 
 namespace NinjaPricer;
 

@@ -1,54 +1,67 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using NinjaPricer.API.PoeNinja;
+using NinjaPricer.API.PoeNinja.Models;
 
-namespace NinjaPricer;
+namespace NinjaPricer.API.PoeNinja;
 
-public partial class NinjaPricer
+public class DataDownloader
 {
-    private const string CurrencyUrl = "https://poe.ninja/api/data/currencyoverview?league={0}&type=Currency&language=en";
-    private const string FragmentsUrl = "https://poe.ninja/api/data/currencyoverview?league={0}&type=Fragment&language=en";
-    private const string DivinationCardsUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=DivinationCard&language=en";
-    private const string EssencesUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=Essence&language=en";
-    private const string UniqueAccessoriesUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=UniqueAccessory&language=en";
-    private const string UniqueArmoursUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=UniqueArmour&language=en";
-    private const string UniqueFlasksUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=UniqueFlask&language=en";
-    private const string UniqueJewelsUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=UniqueJewel&language=en";
-    private const string UniqueMapsUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=UniqueMap&language=en";
-    private const string UniqueWeaponsUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=UniqueWeapon&language=en";
-    private const string WhiteMapsUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=Map&language=en";
-    private const string ResonatorsUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=Resonator&language=en";
-    private const string FossilsUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=Fossil&language=en";
-    private const string ScarabsUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=Scarab&language=en";
-    private const string IncubatorsUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=Incubator&language=en";
-    private const string OilUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=Oil&language=en";
-    private const string DeliriumOrbUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=DeliriumOrb&language=en";
-    private const string VialUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=Vial&language=en";
-    private const string InvitationUrl = "https://poe.ninja/api/data/ItemOverview?league={0}&type=Invitation&language=en";
-    private const string ArtifactsUrl = "https://poe.ninja/api/data/ItemOverview?league={0}&type=Artifact&language=en";
-    private const string SkillGemsUrl = "https://poe.ninja/api/data/ItemOverview?league={0}&type=SkillGem&language=en";
-    private const string ClusterJewelsUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=ClusterJewel&language=en";
-    private const string TattooUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=Tattoo&language=en";
-    private const string OmenUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=Omen&language=en";
-    private const string MemoriesUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=Memory&language=en";
-    private const string BeastUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=Beast&language=en";
-    private const string KalguuranRunesUrl = "https://poe.ninja/api/data/itemoverview?league={0}&type=KalguuranRune&language=en";
+    private const string BaseUrl = "https://poe.ninja";
+
+    private static string GetExchangeLink(string league, string type)
+        => $"{BaseUrl}/poe2/api/economy/exchange/current/overview?league={league}&type={type}";
+
+    private static string GetStashLink(string league, string type)
+        => $"{BaseUrl}/poe2/api/economy/stash/current/item/overview?league={league}&type={type}";
+
+    private int _updating;
+    public CollectiveApiData CollectedData { get; set; }
 
     private class LeagueMetadata
     {
         public DateTime LastLoadTime { get; set; }
     }
 
-    private void StartDataReload(string league, bool forceRefresh)
+    public Action<string> log { get; set; }
+    public NinjaPricerSettings Settings { get; set; }
+    public string DataDirectory { get; set; }
+
+    // Mapping from category name -> API type parameter
+    static readonly Dictionary<string, string> ExchangeCategoryMap = new()
     {
-        LogMessage($"Getting data for {league}", 5);
+        { "Currency", "Currency" },
+        { "Breach", "Breach" },
+        { "Delirium", "Delirium" },
+        { "Essences", "Essences" },
+        { "Runes", "Runes" },
+        { "Ritual", "Ritual" },
+        { "Fragments", "Fragments" },
+        { "UncutGems", "UncutGems" },
+        { "Abyss", "Abyss" },
+        { "Expedition", "Expedition" },
+    };
+
+    static readonly Dictionary<string, string> StashCategoryMap = new()
+    {
+        { "Weapons", "UniqueWeapons"},
+        { "Armour", "UniqueArmours"},
+        { "Accessories", "UniqueAccessories"},
+        { "Flasks", "UniqueFlasks"},
+        { "Jewels", "UniqueJewels"},
+        { "Maps", "UniqueMaps"},
+    };
+
+    public void StartDataReload(string league, bool forceRefresh)
+    {
+        log($"Getting data for {league}");
 
         if (Interlocked.CompareExchange(ref _updating, 1, 0) != 0)
         {
-            LogMessage("Update is already in progress");
+            log("Update is already in progress");
             return;
         }
 
@@ -56,51 +69,50 @@ public partial class NinjaPricer
         {
             try
             {
-                LogMessage("Gathering Data from Poe.Ninja.", 5);
+                log("Gathering Data from Poe.Ninja.");
 
                 var newData = new CollectiveApiData();
                 var tryWebFirst = forceRefresh;
-                var metadataPath = Path.Join(NinjaDirectory, league, "meta.json");
+                var metadataPath = Path.Join(DataDirectory, league, "meta.json");
                 if (!tryWebFirst && Settings.DataSourceSettings.AutoReload)
                 {
                     tryWebFirst = await IsLocalCacheStale(metadataPath);
                 }
 
-                await LoadData<Currency.RootObject>("Currency.json", CurrencyUrl, league, tryWebFirst, t => newData.Currency = t);
-                await LoadData<DivinationCards.RootObject>("DivinationCards.json", DivinationCardsUrl, league, tryWebFirst, t => newData.DivinationCards = t);
-                await LoadData<Essences.RootObject>("Essences.json", EssencesUrl, league, tryWebFirst, t => newData.Essences = t);
-                await LoadData<Fragments.RootObject>("Fragments.json", FragmentsUrl, league, tryWebFirst, t => newData.Fragments = t);
-                await LoadData<UniqueAccessories.RootObject>("UniqueAccessories.json", UniqueAccessoriesUrl, league, tryWebFirst, t => newData.UniqueAccessories = t);
-                await LoadData<UniqueArmours.RootObject>("UniqueArmours.json", UniqueArmoursUrl, league, tryWebFirst, t => newData.UniqueArmours = t);
-                await LoadData<UniqueFlasks.RootObject>("UniqueFlasks.json", UniqueFlasksUrl, league, tryWebFirst, t => newData.UniqueFlasks = t);
-                await LoadData<UniqueJewels.RootObject>("UniqueJewels.json", UniqueJewelsUrl, league, tryWebFirst, t => newData.UniqueJewels = t);
-                await LoadData<UniqueMaps.RootObject>("UniqueMaps.json", UniqueMapsUrl, league, tryWebFirst, t => newData.UniqueMaps = t);
-                await LoadData<UniqueWeapons.RootObject>("UniqueWeapons.json", UniqueWeaponsUrl, league, tryWebFirst, t => newData.UniqueWeapons = t);
-                await LoadData<WhiteMaps.RootObject>("WhiteMaps.json", WhiteMapsUrl, league, tryWebFirst, t => newData.WhiteMaps = t);
-                await LoadData<Resonators.RootObject>("Resonators.json", ResonatorsUrl, league, tryWebFirst, t => newData.Resonators = t);
-                await LoadData<Fossils.RootObject>("Fossils.json", FossilsUrl, league, tryWebFirst, t => newData.Fossils = t);
-                await LoadData<Oils.RootObject>("Oils.json", OilUrl, league, tryWebFirst, t => newData.Oils = t);
-                await LoadData<Incubators.RootObject>("Incubators.json", IncubatorsUrl, league, tryWebFirst, t => newData.Incubators = t);
-                await LoadData<Scarab.RootObject>("Scarabs.json", ScarabsUrl, league, tryWebFirst, t => newData.Scarabs = t);
-                await LoadData<DeliriumOrb.RootObject>("DeliriumOrbs.json", DeliriumOrbUrl, league, tryWebFirst, t => newData.DeliriumOrb = t);
-                await LoadData<Vials.RootObject>("Vials.json", VialUrl, league, tryWebFirst, t => newData.Vials = t);
-                await LoadData<Invitations.RootObject>("Invitations.json", InvitationUrl, league, tryWebFirst, t => newData.Invitations = t);
-                await LoadData<Artifacts.RootObject>("Artifacts.json", ArtifactsUrl, league, tryWebFirst, t => newData.Artifacts = t);
-                await LoadData<SkillGems.RootObject>("SkillGems.json", SkillGemsUrl, league, tryWebFirst, t => newData.SkillGems = t);
-                await LoadData<ClusterJewelNinjaData>("ClusterJewels.json", ClusterJewelsUrl, league, tryWebFirst, t => newData.ClusterJewels = t);
-                await LoadData<Tattoos.RootObject>("Tattoos.json", TattooUrl, league, tryWebFirst, t => newData.Tattoos = t);
-                await LoadData<Omens.RootObject>("Omens.json", OmenUrl, league, tryWebFirst, t => newData.Omens = t);
-                await LoadData<Memories.RootObject>("Memories.json", MemoriesUrl, league, tryWebFirst, t => newData.Memories = t);
-                await LoadData<Beasts.RootObject>("Beasts.json", BeastUrl, league, tryWebFirst, t => newData.Beasts = t);
-                await LoadData<KalguuranRunes.Rootobject>("KalguuranRunes.json", KalguuranRunesUrl, league, tryWebFirst, t => newData.KalguuranRunes = t);
+                // Load exchange (currency) categories
+                foreach (var (key, type) in ExchangeCategoryMap)
+                {
+                    var fileName = $"{key}.json";
+                    var url = GetExchangeLink(league, type);
+
+                    var data = await LoadFromWebOrBackup<ExchangeOverview>(fileName, url, tryWebFirst);
+                    if (data != null)
+                    {
+                        SetExchangeProperty(newData, key, data);
+                    }
+                }
+
+                // Load stash (unique) categories
+                foreach (var (key, type) in StashCategoryMap)
+                {
+                    var fileName = $"{key}.json";
+                    var url = GetStashLink(league, type);
+
+                    var data = await LoadFromWebOrBackup<StashOverview>(fileName, url, tryWebFirst);
+                    if (data != null)
+                    {
+                        SetStashProperty(newData, key, data);
+                    }
+                }
+
+                newData.DivineToExaltedRate = newData.DivineToExaltedRateRaw;
 
                 new FileInfo(metadataPath).Directory?.Create();
                 await File.WriteAllTextAsync(metadataPath, JsonConvert.SerializeObject(new LeagueMetadata { LastLoadTime = DateTime.UtcNow }));
 
-                LogMessage("Finished Gathering Data from Poe.Ninja.", 5);
-                //CollectedData = newData;
-                //DivineDalue = CollectedData.Currency.Find(x => x.type == "Divine Orb")?.latest_price.price;
-                LogMessage("Updated CollectedData.", 5);
+                log("Finished Gathering Data from Poe.Ninja.");
+                CollectedData = newData;
+                log("Updated CollectedData.");
             }
             finally
             {
@@ -109,12 +121,40 @@ public partial class NinjaPricer
         });
     }
 
+    void SetExchangeProperty(CollectiveApiData data, string name, ExchangeOverview value)
+    {
+        switch (name)
+        {
+            case "Currency": data.Currency = value; break;
+            case "Breach": data.Breach = value; break;
+            case "Delirium": data.Delirium = value; break;
+            case "Essences": data.Essences = value; break;
+            case "Runes": data.Runes = value; break;
+            case "Ritual": data.Ritual = value; break;
+            case "Fragments": data.Fragments = value; break;
+            case "UncutGems": data.UncutGems = value; break;
+            case "Abyss": data.Abyss = value; break;
+            case "Expedition": data.Expedition = value; break;
+        }
+    }
+
+    void SetStashProperty(CollectiveApiData data, string name, StashOverview value)
+    {
+        switch (name)
+        {
+            case "Weapons": data.Weapons = value; break;
+            case "Armour": data.Armour = value; break;
+            case "Accessories": data.Accessories = value; break;
+            case "Flasks": data.Flasks = value; break;
+            case "Jewels": data.Jewels = value; break;
+            case "Maps": data.Maps = value; break;
+        }
+    }
+
     private async Task<bool> IsLocalCacheStale(string metadataPath)
     {
         if (!File.Exists(metadataPath))
-        {
             return true;
-        }
 
         try
         {
@@ -124,76 +164,44 @@ public partial class NinjaPricer
         catch (Exception ex)
         {
             if (Settings.DebugSettings.EnableDebugLogging)
-            {
-                LogError($"Metadata loading failed: {ex}");
-            }
-
+                log($"Metadata loading failed: {ex}");
             return true;
         }
     }
 
-    private async Task LoadData<T>(string fileName, string url, string league, bool tryWebFirst, Action<T> dataAction)
+    private async Task<T> LoadFromWebOrBackup<T>(string fileName, string url, bool tryWebFirst) where T : class
     {
-        var backupFile = Path.Join(NinjaDirectory, league, fileName);
+        var backupFile = Path.Join(DataDirectory, Settings.DataSourceSettings.League.Value, fileName);
+
         if (tryWebFirst)
         {
-            if (await LoadDataFromWeb(fileName, url, league, dataAction, backupFile))
-            {
-                return;
-            }
+            var webData = await LoadFromWeb<T>(fileName, url, backupFile);
+            if (webData != null) return webData;
         }
 
-        if (await LoadDataFromBackup(fileName, dataAction, backupFile))
-        {
-            return;
-        }
+        var backupData = await LoadFromBackup<T>(fileName, backupFile);
+        if (backupData != null) return backupData;
 
         if (!tryWebFirst)
         {
-            await LoadDataFromWeb(fileName, url, league, dataAction, backupFile);
+            return await LoadFromWeb<T>(fileName, url, backupFile);
         }
+
+        return null;
     }
 
-    private async Task<bool> LoadDataFromBackup<T>(string fileName, Action<T> dataAction, string backupFile)
-    {
-        if (File.Exists(backupFile))
-        {
-            try
-            {
-                var data = JsonConvert.DeserializeObject<T>(await File.ReadAllTextAsync(backupFile));
-                dataAction(data);
-                return true;
-            }
-            catch (Exception backupEx)
-            {
-                if (Settings.DebugSettings.EnableDebugLogging)
-                {
-                    LogError($"{fileName} backup data load failed: {backupEx}");
-                }
-            }
-        }
-        else if (Settings.DebugSettings.EnableDebugLogging)
-        {
-            LogError($"No backup for {fileName}");
-        }
-
-        return false;
-    }
-
-    private async Task<bool> LoadDataFromWeb<T>(string fileName, string url, string league, Action<T> dataAction, string backupFile)
+    private async Task<T> LoadFromWeb<T>(string fileName, string url, string backupFile) where T : class
     {
         try
         {
             if (Settings.DebugSettings.EnableDebugLogging)
-            {
-                LogMessage($"Downloading {fileName}");
-            }
+                log($"Downloading {fileName}");
 
-            var data = JsonConvert.DeserializeObject<T>(await Utils.DownloadFromUrl(string.Format(url, league)));
+            var json = await Utils.DownloadFromUrl(url);
+            var data = JsonConvert.DeserializeObject<T>(json);
+
             if (Settings.DebugSettings.EnableDebugLogging)
-            {
-                LogMessage($"{fileName} downloaded");
-            }
+                log($"{fileName} downloaded");
 
             try
             {
@@ -206,22 +214,38 @@ public partial class NinjaPricer
                 new FileInfo(errorPath).Directory.Create();
                 await File.WriteAllTextAsync(errorPath, ex.ToString());
                 if (Settings.DebugSettings.EnableDebugLogging)
-                {
-                    LogError($"{fileName} save failed: {ex}");
-                }
+                    log($"{fileName} save failed: {ex}");
             }
 
-            dataAction(data);
-            return true;
+            return data;
         }
         catch (Exception ex)
         {
             if (Settings.DebugSettings.EnableDebugLogging)
-            {
-                LogError($"{fileName} fresh data download failed: {ex}");
-            }
-
-            return false;
+                log($"{fileName} fresh data download failed: {ex}");
+            return null;
         }
+    }
+
+    private async Task<T> LoadFromBackup<T>(string fileName, string backupFile) where T : class
+    {
+        if (File.Exists(backupFile))
+        {
+            try
+            {
+                return JsonConvert.DeserializeObject<T>(await File.ReadAllTextAsync(backupFile));
+            }
+            catch (Exception backupEx)
+            {
+                if (Settings.DebugSettings.EnableDebugLogging)
+                    log($"{fileName} backup data load failed: {backupEx}");
+            }
+        }
+        else if (Settings.DebugSettings.EnableDebugLogging)
+        {
+            log($"No backup for {fileName}");
+        }
+
+        return null;
     }
 }

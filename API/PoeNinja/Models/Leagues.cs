@@ -1,0 +1,16 @@
+﻿namespace NinjaPricer.API.PoeNinja.Models;
+
+public class LeagueRoot
+{
+    public Economyleague[] economyLeagues { get; set; }
+    public Economyleague[] oldEconomyLeagues { get; set; }
+}
+
+public class Economyleague
+{
+    public string name { get; set; }
+    public string url { get; set; }
+    public string displayName { get; set; }
+    public bool hardcore { get; set; }
+    public bool indexed { get; set; }
+}
