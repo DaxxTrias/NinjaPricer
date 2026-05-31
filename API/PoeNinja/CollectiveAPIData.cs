@@ -44,5 +44,5 @@ public class CollectiveApiData
         }
     }
 
-    public double PrimaryToExaltedRate => Currency.Core.Rates.Exalted.Value;
+    public double PrimaryToExaltedRate => Currency.Core.Primary == "exalted" ? 1 : Currency.Core.Rates.Exalted.Value;
 }
