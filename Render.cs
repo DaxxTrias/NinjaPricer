@@ -975,6 +975,11 @@ public partial class NinjaPricer
 
                                 if (File.Exists(fileToPlay))
                                 {
+                                    if (!GameController.SoundController.HasSound(fileToPlay))
+                                    {
+                                        GameController.SoundController.PreloadSound(fileToPlay);
+                                    }
+
                                     GameController.SoundController.PlaySound(fileToPlay, Settings.SoundNotificationSettings.Volume);
                                 }
                                 else if (fileToPlay == defaultFile)
