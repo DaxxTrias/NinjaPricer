@@ -300,6 +300,16 @@ public partial class NinjaPricer
                         }
 
                         break;
+                    case ItemTypes.Verisium:
+                        var verisiumSearch = CollectedData.Verisium?.LinesByName.GetValueOrDefault(item.BaseName);
+                        if (verisiumSearch != null)
+                        {
+                            item.PriceData.MinChaosValue = item.CurrencyInfo.StackSize * verisiumSearch.Value.Line.PrimaryValue * PrimaryPrice;
+                            item.PriceData.ChangeInLast7Days = verisiumSearch.Value.Line.Sparkline?.TotalChange ?? 0;
+                            item.PriceData.DetailsId = verisiumSearch.Value.Item.DetailsId;
+                        }
+
+                        break;
                     case ItemTypes.Essence:
                         if (TryGetExchangeLine(CollectedData?.Essences, item.BaseName, out var essenceLine, out var essenceItem))
                         {

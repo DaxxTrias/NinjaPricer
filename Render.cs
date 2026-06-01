@@ -547,6 +547,7 @@ public partial class NinjaPricer
             case ItemTypes.Talisman:
             case ItemTypes.Omen:
             case ItemTypes.Abyss:
+            case ItemTypes.Verisium:
                 if (hasDivinePrice && priceInDivines >= 0.1)
                 {
                     var priceInDivinessPerOne = priceInDivines / stackSize;

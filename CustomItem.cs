@@ -210,6 +210,7 @@ public class CustomItem
             BaseName != "Charged Compass" &&
             ClassName != "MapFragment" &&
             !BaseName.EndsWith(" Fossil") &&
+            !BaseName.EndsWith(" Alloy") &&
             !BaseName.StartsWith("Splinter of ") &&
             ClassName != "Incubator" &&
             !BaseName.EndsWith(" Catalyst") &&
@@ -219,6 +220,10 @@ public class CustomItem
             !Path.Contains("Metadata/Items/Currency/Abyssal", StringComparison.Ordinal))
         {
             ItemType = ItemTypes.Currency;
+        }
+        else if (ClassName == "StackableCurrency" && BaseName.EndsWith(" Alloy"))
+        {
+            ItemType = ItemTypes.Verisium;
         }
         else if (ClassName == "StackableCurrency" && Path.Contains("Metadata/Items/Currency/Distilled", StringComparison.Ordinal))
         {

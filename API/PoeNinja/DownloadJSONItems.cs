@@ -30,6 +30,7 @@ public class DataDownloader
         { "UncutGems", "UncutGems" },
         { "Abyss", "Abyss" },
         { "Expedition", "Expedition" },
+        { "Verisium", "Verisium" },
     };
 
     private static readonly Dictionary<string, string> StashCategoryMap = new()
@@ -178,6 +179,7 @@ public class DataDownloader
             case "UncutGems": data.UncutGems = value; break;
             case "Abyss": data.Abyss = value; break;
             case "Expedition": data.Expedition = value; break;
+            case "Verisium": data.Verisium = value; break;
         }
     }
 

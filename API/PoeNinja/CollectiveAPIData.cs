@@ -16,6 +16,7 @@ public class CollectiveApiData
     public ExchangeOverview UncutGems { get; set; }
     public ExchangeOverview Abyss { get; set; }
     public ExchangeOverview Expedition { get; set; }
+    public ExchangeOverview Verisium { get; set; }
 
     public StashOverview Weapons { get; set; }
     public StashOverview Armour { get; set; }

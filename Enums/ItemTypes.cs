@@ -25,5 +25,6 @@ public enum ItemTypes
     Expedition,
     Waystone,
     VaultKey,
-    Abyss
+    Abyss,
+    Verisium,
 }
