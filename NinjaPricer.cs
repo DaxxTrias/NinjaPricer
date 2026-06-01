@@ -218,7 +218,8 @@ public partial class NinjaPricer : BaseSettingsPlugin<NinjaPricerSettings>
         {
             var leagueListFromUrl = Utils.DownloadFromUrl("https://poe.ninja/poe2/api/data/index-state").Result;
             var leagueData = JsonConvert.DeserializeObject<LeagueRoot>(leagueListFromUrl);
-            leagueList.UnionWith(leagueData.economyLeagues.Where(league => league.indexed).Select(league => league.name));
+            // poe.ninja can expose current HC economy endpoints while marking the league unindexed in index-state.
+            leagueList.UnionWith(leagueData.economyLeagues.Select(league => league.name));
         }
         catch (Exception ex)
         {
@@ -247,7 +248,11 @@ public partial class NinjaPricer : BaseSettingsPlugin<NinjaPricerSettings>
             }
             else
             {
-                if (playerLeague.StartsWith("SSF "))
+                if (playerLeague.StartsWith("HC SSF "))
+                {
+                    playerLeague = $"HC {playerLeague["HC SSF ".Length..]}";
+                }
+                else if (playerLeague.StartsWith("SSF "))
                 {
                     playerLeague = playerLeague["SSF ".Length..];
                 }
