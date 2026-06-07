@@ -69,8 +69,6 @@ public class LeagueSpecificSettings
     public ToggleNode ShowRitualWindowPrices { get; set; } = new(true);
     public ToggleNode ShowPurchaseWindowPrices { get; set; } = new(true);
 
-    public ToggleNode ShowExpeditionVendorOverlay { get; set; } = new(false);
-
     [Menu(null, "Display chaos equivalent price for items with artifact costs")]
     [JsonProperty("ShowArtifactChaosPricesv2")]
     public ToggleNode ShowArtifactChaosPrices { get; set; } = new(false);
@@ -211,8 +209,7 @@ public class StashValueSettings
             or nameof(InventoryType.CurrencyStash)
             or nameof(InventoryType.FragmentStash)
             or nameof(InventoryType.DelveStash)
-            or nameof(InventoryType.DeliriumStash)
-            or nameof(InventoryType.UltimatumStash))
+            or nameof(InventoryType.DeliriumStash))
         {
             return new StashPriceOverlayLayout { Vertical = PriceOverlayVertical.Top, Edge = PriceOverlayEdge.Outside };
         }

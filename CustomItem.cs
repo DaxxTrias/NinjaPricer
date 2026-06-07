@@ -4,7 +4,6 @@ using System.Linq;
 using ExileCore2.PoEMemory;
 using ExileCore2.PoEMemory.Components;
 using ExileCore2.PoEMemory.Elements.InventoryElements;
-using ExileCore2.PoEMemory.FilesInMemory;
 using ExileCore2.PoEMemory.MemoryObjects;
 using ExileCore2.PoEMemory.Models;
 using ExileCore2.Shared.Enums;
@@ -87,7 +86,7 @@ public class CustomItem
             var baseItemType = Core.GameController.Files.BaseItemTypes.Translate(itemEntity.Path);
             ClassName = baseItemType?.ClassName ?? string.Empty;
             BaseName = baseItemType?.BaseName ?? string.Empty;
-            var weaponClass = new List<string>
+            var weaponClasses = new List<string>
             {
                 "One Hand Mace",
                 "Two Hand Mace",
@@ -95,13 +94,17 @@ public class CustomItem
                 "Two Hand Axe",
                 "One Hand Sword",
                 "Two Hand Sword",
-                "Thrusting One Hand Sword",
+                "Spear",
+                "Flail",
                 "Bow",
+                "Crossbow",
                 "Claw",
                 "Dagger",
                 "Sceptre",
                 "Staff",
-                "Wand"
+                "Quarterstaff",
+                "Quarterstaves",
+                "Wand",
             };
             if (itemEntity.TryGetComponent<Quality>(out var quality))
             {
@@ -152,7 +155,7 @@ public class CustomItem
                 }
             }
 
-            if (weaponClass.Any(ClassName.Equals))
+            if (weaponClasses.Any(ClassName.Equals))
                 IsWeapon = true;
 
             MapInfo.MapTier = itemEntity.TryGetComponent<Map>(out var map) ? map.Tier : 0;
@@ -190,7 +193,38 @@ public class CustomItem
     {
         // sort items into types to use correct json data later from poe.ninja
         // This might need tweaking since if this catches anything other than currency.
-        if (ClassName == "StackableCurrency" &&
+        if (ClassName == "StackableCurrency" && (
+                     BaseName.EndsWith(" Alloy") ||
+                     Path.StartsWith("Metadata/Items/Currency/CurrencyVerisium", StringComparison.Ordinal)))
+        {
+            ItemType = ItemTypes.Verisium;
+        }
+        else if (ClassName == "StackableCurrency" &&
+                 (Path.StartsWith("Metadata/Items/Currency/Distilled", StringComparison.Ordinal) ||
+                  Path.StartsWith("Metadata/Items/Currency/EndgameDistilled")))
+        {
+            ItemType = ItemTypes.Delirium;
+        }
+        else if (ClassName == "StackableCurrency" && Path.Contains("Metadata/Items/Currency/Abyssal", StringComparison.Ordinal) ||
+                 ClassName == "SoulCore" && Path.EndsWith("Gaze"))
+        {
+            ItemType = ItemTypes.Abyss;
+        }
+        else if (ClassName == "StackableCurrency" && (
+                     BaseName.EndsWith("Artifact") ||
+                     BaseName.Contains("Coinage") ||
+                     Path.StartsWith("Metadata/Items/Currency/CurrencySetKalguuranSkillGemLevel", StringComparison.Ordinal) ||
+                     Path.StartsWith("Metadata/Items/Currency/CurrencyArcaneFlux", StringComparison.Ordinal) ||
+                     Path.StartsWith("Metadata/Items/Currency/Expedition/ExpeditionPinnacleKey", StringComparison.Ordinal)) ||
+                 ClassName == "SoulCore" && (
+                     Path.StartsWith("Metadata/Items/SoulCores/Carved", StringComparison.Ordinal) ||
+                     Path.StartsWith("Metadata/Items/SoulCores/Emergent", StringComparison.Ordinal)) ||
+                 ClassName == "Omen" && Path.StartsWith("Metadata/Items/Expedition/", StringComparison.Ordinal) ||
+                 ClassName == "Expedition2Logbooks")
+        {
+            ItemType = ItemTypes.Expedition;
+        }
+        else if (ClassName == "StackableCurrency" &&
             !BaseName.StartsWith("Crescent Splinter") &&
             !BaseName.StartsWith("Simulacrum") &&
             !BaseName.EndsWith("Delirium Orb") &&
@@ -215,33 +249,16 @@ public class CustomItem
             ClassName != "Incubator" &&
             !BaseName.EndsWith(" Catalyst") &&
             BaseName != "Valdo's Puzzle Box" &&
-            BaseName != "Breach Splinter" &&
-            !Path.Contains("Metadata/Items/Currency/Distilled", StringComparison.Ordinal) &&
-            !Path.Contains("Metadata/Items/Currency/Abyssal", StringComparison.Ordinal))
+            BaseName != "Breach Splinter" ||
+            BaseName == "Vaal Siphoner")
         {
             ItemType = ItemTypes.Currency;
         }
-        else if (ClassName == "StackableCurrency" && BaseName.EndsWith(" Alloy"))
-        {
-            ItemType = ItemTypes.Verisium;
-        }
-        else if (ClassName == "StackableCurrency" && Path.Contains("Metadata/Items/Currency/Distilled", StringComparison.Ordinal))
-        {
-            ItemType = ItemTypes.Delirium;
-        }
-        else if (ClassName == "StackableCurrency" && Path.Contains("Metadata/Items/Currency/Abyssal", StringComparison.Ordinal))
-        {
-            ItemType = ItemTypes.Abyss;
-        }
-        else if (BaseName.EndsWith(" Catalyst") || BaseName== "Breach Splinter")
+        else if (BaseName.EndsWith(" Catalyst") || BaseName == "Breach Splinter" || BaseName == "Breachstone")
         {
             ItemType = ItemTypes.Catalyst;
         }
-        else if (BaseName.Contains("Astragali") || BaseName.Contains("Burial Medallion") || BaseName.Contains("Scrap Metal") || BaseName.Contains("Exotic Coinage"))     
-        {
-            ItemType = ItemTypes.Artifact;
-        }
-        else if (BaseName.StartsWith("Omen "))
+        else if (ClassName == "Omen" || Path == "Metadata/Items/SoulCores/AugmentAnoint")
         {
             ItemType = ItemTypes.Omen;
         }
@@ -253,43 +270,37 @@ public class CustomItem
         {
             ItemType = ItemTypes.Essence;
         }
-        else if (BaseName.Contains("Rune") && ClassName == "SoulCore")
+        else if (ClassName == "SoulCore" && (BaseName.Contains("Rune") || Path.StartsWith("Metadata/Items/SoulCores/Rune", StringComparison.Ordinal)))
         {
             ItemType = ItemTypes.Rune;
         }
-        else if (BaseName.Contains("Soul Core") && ClassName == "SoulCore")
+        else if (ClassName == "SoulCore" && (BaseName.Contains("Soul Core") || Path.StartsWith("Metadata/Items/SoulCores/Thesis", StringComparison.Ordinal)))
         {
             ItemType = ItemTypes.Ultimatum;
         }
-        else if (BaseName.Contains("Talisman") && ClassName == "SoulCore")
+        else if (ClassName == "SoulCore" && BaseName.Contains("Idol"))
+        {
+            ItemType = ItemTypes.Idol;
+        }
+        else if (ClassName == "SoulCore" && BaseName.Contains("Talisman"))
         {
             ItemType = ItemTypes.Talisman;
         }
-        else if (BaseName.EndsWith("Artifact") && ClassName == "StackableCurrency" || 
-                 BaseName.Contains("Coinage") && ClassName == "StackableCurrency")
+        else if (ClassName == "Relic")
         {
-            ItemType = ItemTypes.Expedition;
+            ItemType = ItemTypes.Relic;
         }
-        else if (BaseName.Contains("Waystone") && ClassName == "Map" || 
-                 BaseName.Contains("Tablet") && ClassName == "TowerAugmentation")
-        {
-            ItemType = ItemTypes.Waystone;
-        }
-        else if (BaseName.Contains("Key") && ClassName == "VaultKey")
-        {
-            ItemType = ItemTypes.VaultKey;
-        }
-        else if (ClassName == "MapFragment" || BaseName.Contains("Timeless ") || BaseName.StartsWith("Simulacrum") ||
+        else if (ClassName == "MapFragment" ||
+                 BaseName.Contains("Timeless ") ||
+                 BaseName.StartsWith("Simulacrum") ||
                  ClassName == "StackableCurrency" && BaseName.EndsWith("Splinter") ||
                  BaseName.StartsWith("Crescent Splinter") ||
                  ClassName == "VaultKey" ||
-                 BaseName == "Valdo's Puzzle Box")
+                 BaseName == "Valdo's Puzzle Box" ||
+                 ClassName == "VaultKey" ||
+                 ClassName == "PinnacleKeyStackable")
         {
             ItemType = ItemTypes.Fragment;
-        }
-        else if (MapInfo.IsMap && Rarity != ItemRarity.Unique)
-        {
-            ItemType = ItemTypes.Map;
         }
         else if (ClassName is "Support Skill Gem" or "Active Skill Gem")
         {
@@ -303,6 +314,12 @@ public class CustomItem
         {
             switch (Rarity) // Unique information
             {
+                case ItemRarity.Unique when MapInfo.IsMap || ClassName == "TowerAugmentation":
+                    ItemType = ItemTypes.UniqueMap;
+                    break;
+                case ItemRarity.Unique when ClassName is "UtilityFlask":
+                    ItemType = ItemTypes.UniqueCharm;
+                    break;
                 case ItemRarity.Unique when ClassName is "Amulet" or "Ring" or "Belt":
                     ItemType = ItemTypes.UniqueAccessory;
                     break;
@@ -315,7 +332,7 @@ public class CustomItem
                 case ItemRarity.Unique when ClassName == "Jewel":
                     ItemType = ItemTypes.UniqueJewel;
                     break;
-                case ItemRarity.Unique when itemEntity?.HasComponent<Weapon>() == true || ClassName == "Sceptre":
+                case ItemRarity.Unique when IsWeapon || itemEntity?.HasComponent<Weapon>() == true:
                     ItemType = ItemTypes.UniqueWeapon;
                     break;
             }

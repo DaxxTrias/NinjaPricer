@@ -31,6 +31,9 @@ public class DataDownloader
         { "Abyss", "Abyss" },
         { "Expedition", "Expedition" },
         { "Verisium", "Verisium" },
+        { "LineageSupportGems", "LineageSupportGems" },
+        { "SoulCores", "SoulCores" },
+        { "Idols", "Idols" },
     };
 
     private static readonly Dictionary<string, string> StashCategoryMap = new()
@@ -41,6 +44,8 @@ public class DataDownloader
         { "Flasks", "UniqueFlasks" },
         { "Jewels", "UniqueJewels" },
         { "Maps", "UniqueMaps" },
+        { "Charms", "UniqueCharms" },
+        { "SanctumRelics", "UniqueSanctumRelics" },
     };
 
     private int _updating;
@@ -180,6 +185,9 @@ public class DataDownloader
             case "Abyss": data.Abyss = value; break;
             case "Expedition": data.Expedition = value; break;
             case "Verisium": data.Verisium = value; break;
+            case "LineageSupportGems": data.LineageSupportGems = value; break;
+            case "SoulCores": data.SoulCores = value; break;
+            case "Idols": data.Idols = value; break;
         }
     }
 
@@ -193,6 +201,8 @@ public class DataDownloader
             case "Flasks": data.Flasks = value; break;
             case "Jewels": data.Jewels = value; break;
             case "Maps": data.Maps = value; break;
+            case "Charms": data.Charms = value; break;
+            case "SanctumRelics": data.SanctumRelics = value; break;
         }
     }
 

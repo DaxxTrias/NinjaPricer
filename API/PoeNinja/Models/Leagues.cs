@@ -3,7 +3,6 @@
 public class LeagueRoot
 {
     public Economyleague[] economyLeagues { get; set; }
-    public Economyleague[] oldEconomyLeagues { get; set; }
 }
 
 public class Economyleague

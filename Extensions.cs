@@ -57,9 +57,4 @@ public static class Extensions
 
         return Math.Round((decimal)number, significantDigits).ToString(format, CultureInfo.InvariantCulture);
     }
-
-    public static bool IsChanceable(this object item)
-    {
-        return true;
-    }
 }
