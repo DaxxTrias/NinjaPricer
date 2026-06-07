@@ -138,6 +138,15 @@ public class StashValueSettings
 {
     private static readonly string[] VerticalLabels = ["Top", "Bottom"];
     private static readonly string[] EdgeLabels = ["Outside", "Inside"];
+    private static readonly HashSet<string> TopOutsideDefaultStashes = new(StringComparer.Ordinal)
+    {
+        "BlightStash",
+        "CurrencyStash",
+        "FragmentStash",
+        "DelveStash",
+        "DeliriumStash",
+        "UltimatumStash",
+    };
 
     public StashValueSettings()
     {
@@ -205,11 +214,7 @@ public class StashValueSettings
 
     private StashPriceOverlayLayout GetDefaultLayout(string type)
     {
-        if (type is nameof(InventoryType.BlightStash)
-            or nameof(InventoryType.CurrencyStash)
-            or nameof(InventoryType.FragmentStash)
-            or nameof(InventoryType.DelveStash)
-            or nameof(InventoryType.DeliriumStash))
+        if (type != null && TopOutsideDefaultStashes.Contains(type))
         {
             return new StashPriceOverlayLayout { Vertical = PriceOverlayVertical.Top, Edge = PriceOverlayEdge.Outside };
         }
