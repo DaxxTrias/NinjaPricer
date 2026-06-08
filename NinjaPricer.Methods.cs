@@ -147,13 +147,7 @@ public partial class NinjaPricer
 
     private static bool TryGetShardParent(string shardBaseName, out string shardParent)
     {
-        if (string.IsNullOrEmpty(shardBaseName))
-        {
-            shardParent = string.Empty;
-            return false;
-        }
-
-        if (ShardMapping.TryGetValue(shardBaseName, out var mappedShardParent))
+        if (!string.IsNullOrEmpty(shardBaseName) && ShardMapping.TryGetValue(shardBaseName, out var mappedShardParent))
         {
             shardParent = mappedShardParent;
             return true;
@@ -220,6 +214,11 @@ public partial class NinjaPricer
 
     private T GetValue<T>(T items) where T : IReadOnlyCollection<CustomItem>
     {
+        if (items == null)
+        {
+            return default;
+        }
+
         foreach (var customItem in items)
         {
             GetValue(customItem);

@@ -7,20 +7,7 @@ public static class Extensions
 {
     public static string FormatNumber(this double number, int significantDigits, double maxInvertValue = 0, bool forceDecimals = false)
     {
-        if (double.IsNaN(number))
-        {
-            return "n/a";
-        }
-
-        if (double.IsPositiveInfinity(number))
-        {
-            return "inf";
-        }
-
-        if (double.IsNegativeInfinity(number))
-        {
-            return "-inf";
-        }
+        if (TryFormatEdgeCase(number, out var formatNumber)) return formatNumber;
 
         if (number == 0)
         {
@@ -35,10 +22,7 @@ public static class Extensions
         if (Math.Abs(number) < maxInvertValue)
         {
             var inverted = 1 / number;
-            if (!double.IsFinite(inverted))
-            {
-                return "n/a";
-            }
+            if (TryFormatEdgeCase(inverted, out var formatInverted)) return $"1/{formatInverted}";
 
             if (Math.Abs(inverted) > (double)decimal.MaxValue)
             {
@@ -56,5 +40,29 @@ public static class Extensions
         }
 
         return Math.Round((decimal)number, significantDigits).ToString(format, CultureInfo.InvariantCulture);
+    }
+
+    private static bool TryFormatEdgeCase(double number, out string formatNumber)
+    {
+        if (double.IsNaN(number))
+        {
+            formatNumber = "n/a";
+            return true;
+        }
+
+        if (double.IsPositiveInfinity(number))
+        {
+            formatNumber = "inf";
+            return true;
+        }
+
+        if (double.IsNegativeInfinity(number))
+        {
+            formatNumber = "-inf";
+            return true;
+        }
+
+        formatNumber = string.Empty;
+        return false;
     }
 }
